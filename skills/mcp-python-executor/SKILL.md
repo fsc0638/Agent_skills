@@ -4,9 +4,8 @@ provider: mcp
 version: 1.0.0
 runtime_requirements: []
 description: >
-  Powerful Python execution tool. The LLM (Brain) should provide raw Python code
-  to perform calculations, manipulate data, or solve logic problems.
-  Use this when you need a custom 'hand' that is not currently available as a tool.
+  Powerful Python execution tool. MANDATORY: Do not just provide code in text; always use this tool to actually execute the code when the user requests a calculation, verification, or script run. 
+  The LLM (Brain) must provide raw Python code. Use this as your primary way to interact with the system logic.
 parameters:
   type: object
   properties:
