@@ -4,28 +4,28 @@ provider: mcp
 version: 0.1.0
 runtime_requirements: []
 description: >
-  Convert text data between formats. Accepts an input string and a target format,
-  then returns the converted result. Supported conversions: text to uppercase,
-  text to lowercase, text to title case, and word count analysis.
-  Use this tool when users ask to transform, convert, or analyze text content.
+  文字格式轉換工具。接受輸入字串與目標格式，
+  然後回傳轉換後的結果。支援的轉換方式：文字轉大寫、
+  文字轉小寫、文字轉標題格式、字數分析。
+  當使用者要求轉換、變形或分析文字內容時，使用此工具。
 parameters:
   type: object
   properties:
     input_text:
       type: string
-      description: The text content to process.
+      description: 要處理的文字內容。
     operation:
       type: string
-      description: One of "uppercase", "lowercase", "titlecase", "wordcount".
+      description: 操作類型，擇一使用："uppercase"、"lowercase"、"titlecase"、"wordcount"。
   required: [input_text, operation]
 ---
 
-# MCP Sample Converter
+# MCP Sample Converter（文字格式轉換工具）
 
-## Description
-This tool converts text between various formats and provides basic text analysis.
+## 說明
+此工具可在各種格式之間轉換文字，並提供基本文字分析功能。
 
-## How to use (Strict Mode / Low Freedom)
-- Input parameters:
-  - input_text (string): The text content to process
-  - operation (string): One of "uppercase", "lowercase", "titlecase", "wordcount"
+## 使用方式（嚴格模式 / 低自由度）
+- 輸入參數：
+  - input_text（字串）：要處理的文字內容
+  - operation（字串）：操作類型，擇一使用："uppercase"、"lowercase"、"titlecase"、"wordcount"

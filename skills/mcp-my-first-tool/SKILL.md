@@ -4,27 +4,27 @@ provider: mcp
 version: 0.1.0
 runtime_requirements: []
 description: >
-  A simple greeting and echo tool. Accepts a user's name and an optional message,
-  then returns a personalized greeting with the current timestamp.
-  Use this tool when users want to test the system or say hello.
+  簡單的問候與回應工具。接受使用者名稱及選填訊息，
+  並回傳附有目前時間戳記的個人化問候語。
+  當使用者想測試系統或打聲招呼時，使用此工具。
 parameters:
   type: object
   properties:
     name:
       type: string
-      description: The user's name.
+      description: 使用者的姓名。
     message:
       type: string
-      description: A custom message to echo back.
+      description: 要回傳的自訂訊息。
   required: [name]
 ---
 
-# MCP My First Tool
+# MCP My First Tool（第一個測試工具）
 
-## Description
-A simple greeting tool for testing the UMA pipeline end-to-end.
+## 說明
+用於端對端測試 UMA 管線的簡單問候工具。
 
-## How to use (Strict Mode / Low Freedom)
-- Input parameters:
-  - name (string): The user's name
-  - message (string, optional): A custom message to echo back
+## 使用方式（嚴格模式 / 低自由度）
+- 輸入參數：
+  - name（字串）：使用者的姓名
+  - message（字串，選填）：要回傳的自訂訊息

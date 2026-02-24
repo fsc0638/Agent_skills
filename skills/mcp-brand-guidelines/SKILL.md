@@ -1,5 +1,7 @@
 ---
+
 name: brand-guidelines
+version: "1.0.0"
 description: 管理研發組專案的 CIS (Corporate Identity System) 品牌設計規範。包含官方顏色（深邃藍、活力橘）、背景色調與設計意圖。在進行任何 UI 設計、前端開發或畫面美化任務時，必須讀取此規範以維持視覺一致性。
 license: Complete terms in LICENSE.txt
 ---

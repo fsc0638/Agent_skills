@@ -1,32 +1,35 @@
 ---
+
 name: internal-comms
-description: A set of resources to help me write all kinds of internal communications, using the formats that my company likes to use. Claude should use this skill whenever asked to write some sort of internal communications (status reports, leadership updates, 3P updates, company newsletters, FAQs, incident reports, project updates, etc.).
+version: "1.0.0"
+description: 一套協助撰寫各類內部溝通訊息的資源，採用公司慣用的格式。當被要求撰寫任何形式的內部通訊時使用此技能（例如：狀態報告、主管更新、3P 更新、公司電子報、FAQ、事故報告、專案更新等）。
 license: Complete terms in LICENSE.txt
 ---
 
-## When to use this skill
-To write internal communications, use this skill for:
-- 3P updates (Progress, Plans, Problems)
-- Company newsletters
-- FAQ responses
-- Status reports
-- Leadership updates
-- Project updates
-- Incident reports
+## 適用情境
 
-## How to use this skill
+在撰寫內部通訊內容時使用此技能，包括：
+- 3P 更新（進展 Progress、計畫 Plans、問題 Problems）
+- 公司電子報
+- FAQ 回覆
+- 狀態報告
+- 主管更新
+- 專案更新
+- 事故報告
 
-To write any internal communication:
+## 使用方式
 
-1. **Identify the communication type** from the request
-2. **Load the appropriate guideline file** from the `examples/` directory:
-    - `examples/3p-updates.md` - For Progress/Plans/Problems team updates
-    - `examples/company-newsletter.md` - For company-wide newsletters
-    - `examples/faq-answers.md` - For answering frequently asked questions
-    - `examples/general-comms.md` - For anything else that doesn't explicitly match one of the above
-3. **Follow the specific instructions** in that file for formatting, tone, and content gathering
+撰寫任何內部通訊時：
 
-If the communication type doesn't match any existing guideline, ask for clarification or more context about the desired format.
+1. **從請求中判斷通訊類型**
+2. **載入 `examples/` 目錄中對應的範本檔案**：
+    - `examples/3p-updates.md` — 用於進展 / 計畫 / 問題的團隊更新
+    - `examples/company-newsletter.md` — 用於全公司電子報
+    - `examples/faq-answers.md` — 用於常見問題回覆
+    - `examples/general-comms.md` — 用於不符合上述類型的其他通訊
+3. **依照該檔案的具體指示**處理格式、語氣與內容收集
 
-## Keywords
+若通訊類型不符合任何現有範本，請向使用者詢問所需格式的說明或更多背景資訊。
+
+## 關鍵字
 3P updates, company newsletter, company comms, weekly update, faqs, common questions, updates, internal comms

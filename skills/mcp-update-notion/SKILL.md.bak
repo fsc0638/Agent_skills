@@ -1,0 +1,22 @@
+---
+name: mcp-update-notion
+display_name: "上傳Notion"
+description: "Notion 格式與邏輯映射 Agent - 嚴格執行業務邏輯確保資料符合資料庫限制"
+version: "1.0.0"
+category: "📄 文件處理"
+runtime_requirements: []
+risk_level: "low"
+---
+
+# 上傳Notion
+
+Notion 格式與邏輯映射 Agent - 嚴格執行業務邏輯確保資料符合資料庫限制
+
+## 使用方式
+
+說明此技能的使用方法、接受的輸入與回傳的輸出格式。
+
+## 注意事項
+
+- 此為新建技能，尚未設定執行腳本
+- 請在 `scripts/` 目錄下新增 `main.py` 以啟用執行功能
