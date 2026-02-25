@@ -5,7 +5,7 @@
       "id": "mcp-algorithmic-art",
       "name": "algorithmic-art",
       "version": "1.0.0",
-      "description": "Creating algorithmic art using p5.js with seeded randomness and interactive parameter exploration. Use this when users request creating art using code, generative art, algorithmic art, flow fields, or particle systems. Create original algorithmic art rather than copying existing artists' work to avoid copyright violations.",
+      "description": "使用 p5.js、種子隨機性和互動式參數探索來創作演算法藝術。當使用者要求使用程式碼、生成藝術、演算法藝術、流動場 (flow fields) 或粒子系統創作藝術時使用此技能。創作原創演算法藝術，避免複製現有藝術家的作品以避免侵犯版權。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -15,7 +15,7 @@
       "id": "mcp-brand-guidelines",
       "name": "brand-guidelines",
       "version": "1.0.0",
-      "description": "Applies Anthropic's official brand colors and typography to any sort of artifact that may benefit from having Anthropic's look-and-feel. Use it when brand colors or style guidelines, visual formatting, or company design standards apply.",
+      "description": "管理研發組專案的 CIS (Corporate Identity System) 品牌設計規範。包含官方顏色（深邃藍、活力橘）、背景色調與設計意圖。在進行任何 UI 設計、前端開發或畫面美化任務時，必須讀取此規範以維持視覺一致性。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -25,7 +25,7 @@
       "id": "mcp-canvas-design",
       "name": "canvas-design",
       "version": "1.0.0",
-      "description": "Create beautiful visual art in .png and .pdf documents using design philosophy. You should use this skill when the user asks to create a poster, piece of art, design, or other static piece. Create original visual designs, never copying existing artists' work to avoid copyright violations.",
+      "description": "使用設計理念在 .png 和 .pdf 文件中建立美麗的視覺藝術。當使用者要求建立海報、藝術品、設計或其他靜態作品時，應使用此技能。建立原創視覺設計，絕不複製現有藝術家的作品，以避免侵犯版權。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -35,7 +35,7 @@
       "id": "mcp-doc-coauthoring",
       "name": "doc-coauthoring",
       "version": "1.0.0",
-      "description": "Guide users through a structured workflow for co-authoring documentation. Use when user wants to write documentation, proposals, technical specs, decision docs, or similar structured content. This workflow helps users efficiently transfer context, refine content through iteration, and verify the doc works for readers. Trigger when user mentions writing docs, creating proposals, drafting specs, or similar documentation tasks.",
+      "description": "引導使用者完成結構化的文件共同撰寫工作流程。當使用者想撰寫文件、提案、技術規格、決策文件或類似的結構化內容時使用。此工作流程可幫助使用者有效轉移情境、透過迭代精煉內容，並驗證文件對讀者是否有效。當使用者提及撰寫文件、建立提案、起草規格或類似的文件任務時觸發。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -45,7 +45,7 @@
       "id": "mcp-docx-processor",
       "name": "docx",
       "version": "1.0.0",
-      "description": "Comprehensive document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. When Claude needs to work with professional documents (.docx files) for: (1) Creating new documents, (2) Modifying or editing content, (3) Working with tracked changes, (4) Adding comments, or any other document tasks",
+      "description": "全面的文件建立、編輯與分析工具，支援追蹤修訂、備註、格式保留和文字提取。當 AI 需要處理專業文件（.docx 檔案）以進行：(1) 建立新文件、(2) 修改或編輯內容、(3) 處理追蹤修訂、(4) 新增備註，或任何其他文件任務時使用。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -55,7 +55,7 @@
       "id": "mcp-frontend-design",
       "name": "frontend-design",
       "version": "1.0.0",
-      "description": "Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications (examples include websites, landing pages, dashboards, React components, HTML/CSS layouts, or when styling/beautifying any web UI). Generates creative, polished code and UI design that avoids generic AI aesthetics.",
+      "description": "製作具有高設計品質的獨特、生產等級前端介面。當使用者要求建立網頁元件、頁面、成品、海報或應用程式時使用此技能（例如網站、登陸頁、儀表板、React 元件、HTML/CSS 版型，或對任何網頁 UI 進行美化設計）。生成富有創意、精緻的程式碼與 UI 設計，避免產生通用的 AI 風格。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -65,7 +65,7 @@
       "id": "mcp-internal-comms",
       "name": "internal-comms",
       "version": "1.0.0",
-      "description": "A set of resources to help me write all kinds of internal communications, using the formats that my company likes to use. Claude should use this skill whenever asked to write some sort of internal communications (status reports, leadership updates, 3P updates, company newsletters, FAQs, incident reports, project updates, etc.).",
+      "description": "一套協助撰寫各類內部溝通訊息的資源，採用公司慣用的格式。當被要求撰寫任何形式的內部通訊時使用此技能（例如：狀態報告、主管更新、3P 更新、公司電子報、FAQ、事故報告、專案更新等）。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -75,7 +75,7 @@
       "id": "mcp-legacy-skill-creator",
       "name": "skill-creator",
       "version": "1.0.0",
-      "description": "Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude's capabilities with specialized knowledge, workflows, or tool integrations.",
+      "description": "建立有效技能的指導文件。當使用者想建立新技能（或更新現有技能），以專業知識、工作流程或工具整合來擴充 AI 的能力時，應使用此技能。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -85,7 +85,7 @@
       "id": "mcp-my-first-tool",
       "name": "mcp-my-first-tool",
       "version": "0.1.0",
-      "description": "A simple greeting and echo tool. Accepts a user's name and an optional message, then returns a personalized greeting with the current timestamp. Use this tool when users want to test the system or say hello.",
+      "description": "簡單的問候與回應工具。接受使用者名稱及選填訊息， 並回傳附有目前時間戳記的個人化問候語。 當使用者想測試系統或打聲招呼時，使用此工具。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -94,11 +94,11 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "The user's name."
+            "description": "使用者的姓名。"
           },
           "message": {
             "type": "string",
-            "description": "A custom message to echo back."
+            "description": "要回傳的自訂訊息。"
           }
         },
         "required": [
@@ -110,7 +110,7 @@
       "id": "mcp-pdf-processor",
       "name": "pdf",
       "version": "1.0.0",
-      "description": "Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.",
+      "description": "完整的 PDF 操作工具包，可提取文字與表格、建立新 PDF、合併／拆分文件及處理表單。當需要填寫 PDF 表單，或以程式化方式處理、生成或大規模分析 PDF 文件時使用。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -120,7 +120,7 @@
       "id": "mcp-pptx-processor",
       "name": "pptx",
       "version": "1.0.0",
-      "description": "Presentation creation, editing, and analysis. When Claude needs to work with presentations (.pptx files) for: (1) Creating new presentations, (2) Modifying or editing content, (3) Working with layouts, (4) Adding comments or speaker notes, or any other presentation tasks",
+      "description": "簡報建立、編輯與分析。當 AI 需要處理簡報（.pptx 檔案）以進行：(1) 建立新簡報、(2) 修改或編輯內容、(3) 處理版面配置、(4) 新增備註或演講者備忘稿，或任何其他簡報任務時使用。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -130,7 +130,7 @@
       "id": "mcp-python-executor",
       "name": "mcp-python-executor",
       "version": "1.0.0",
-      "description": "Powerful Python execution tool. The LLM (Brain) should provide raw Python code to perform calculations, manipulate data, or solve logic problems. Use this when you need a custom 'hand' that is not currently available as a tool.",
+      "description": "強大的 Python 程式碼執行工具。強制規定：不得只在文字中提供程式碼；當使用者要求執行計算、驗證結果或執行腳本時，必須使用此工具實際執行程式碼。 LLM（大腦）須提供原始 Python 程式碼，並以此工具作為與系統邏輯互動的主要方式。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -139,7 +139,7 @@
         "properties": {
           "code": {
             "type": "string",
-            "description": "The full Python code to execute. Use print() to see output."
+            "description": "要執行的完整 Python 程式碼。使用 print() 輸出結果。"
           }
         },
         "required": [
@@ -151,7 +151,7 @@
       "id": "mcp-sample-converter",
       "name": "mcp-sample-converter",
       "version": "0.1.0",
-      "description": "Convert text data between formats. Accepts an input string and a target format, then returns the converted result. Supported conversions: text to uppercase, text to lowercase, text to title case, and word count analysis. Use this tool when users ask to transform, convert, or analyze text content.",
+      "description": "文字格式轉換工具。接受輸入字串與目標格式， 然後回傳轉換後的結果。支援的轉換方式：文字轉大寫、 文字轉小寫、文字轉標題格式、字數分析。 當使用者要求轉換、變形或分析文字內容時，使用此工具。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -160,11 +160,11 @@
         "properties": {
           "input_text": {
             "type": "string",
-            "description": "The text content to process."
+            "description": "要處理的文字內容。"
           },
           "operation": {
             "type": "string",
-            "description": "One of \"uppercase\", \"lowercase\", \"titlecase\", \"wordcount\"."
+            "description": "操作類型，擇一使用：\"uppercase\"、\"lowercase\"、\"titlecase\"、\"wordcount\"。"
           }
         },
         "required": [
@@ -177,7 +177,7 @@
       "id": "mcp-skill-builder",
       "name": "mcp-builder",
       "version": "1.0.0",
-      "description": "Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK).",
+      "description": "建立高品質 MCP（Model Context Protocol）伺服器的指南，讓 LLM 能透過精心設計的工具與外部服務互動。在建立 MCP 伺服器以整合外部 API 或服務時使用，無論是 Python（FastMCP）或 Node/TypeScript（MCP SDK）皆適用。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -187,7 +187,7 @@
       "id": "mcp-skill-factory",
       "name": "skill-creator",
       "version": "1.0.0",
-      "description": "Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude's capabilities with specialized knowledge, workflows, or tool integrations.",
+      "description": "建立有效技能的指導文件。當使用者想建立新技能（或更新現有技能），以專業知識、工作流程或工具整合來擴充 AI 的能力時，應使用此技能。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -197,7 +197,7 @@
       "id": "mcp-slack-gif-gen",
       "name": "slack-gif-creator",
       "version": "1.0.0",
-      "description": "Knowledge and utilities for creating animated GIFs optimized for Slack. Provides constraints, validation tools, and animation concepts. Use when users request animated GIFs for Slack like \"make me a GIF of X doing Y for Slack.\"",
+      "description": "為 Slack 優化的 GIF 動畫製作知識與工具組。提供規格限制、驗證工具和動畫概念。當使用者要求製作 Slack 用的 GIF 動畫時使用，例如「幫我做一個 X 在做 Y 的 Slack 用 GIF」。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -207,7 +207,17 @@
       "id": "mcp-theme-factory",
       "name": "theme-factory",
       "version": "1.0.0",
-      "description": "Toolkit for styling artifacts with a theme. These artifacts can be slides, docs, reportings, HTML landing pages, etc. There are 10 pre-set themes with colors/fonts that you can apply to any artifact that has been creating, or can generate a new theme on-the-fly.",
+      "description": "為各類成品套用視覺主題的工具組，適用於簡報、文件、報告、HTML 登陸頁等。提供 10 個預設主題（含顏色 / 字體），可套用至任何現有成品，也可即時生成自訂主題。",
+      "runtime_requirements": [],
+      "estimated_tokens": 500,
+      "requires_venv": false,
+      "parameters": {}
+    },
+    {
+      "id": "mcp-update-notion",
+      "name": "mcp-update-notion",
+      "version": "1.0.0",
+      "description": "Notion 格式與邏輯映射 Agent - 嚴格執行業務邏輯確保資料符合資料庫限制",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -217,7 +227,7 @@
       "id": "mcp-web-artifacts",
       "name": "web-artifacts-builder",
       "version": "1.0.0",
-      "description": "Suite of tools for creating elaborate, multi-component claude.ai HTML artifacts using modern frontend web technologies (React, Tailwind CSS, shadcn/ui). Use for complex artifacts requiring state management, routing, or shadcn/ui components - not for simple single-file HTML/JSX artifacts.",
+      "description": "使用現代前端網頁技術（React、Tailwind CSS、shadcn/ui）建立精緻多元件 Claude.ai HTML 成品的工具套件。適用於需要狀態管理、路由或 shadcn/ui 元件的複雜成品——不適用於簡單的單檔案 HTML/JSX 成品。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -227,7 +237,7 @@
       "id": "mcp-webapp-tester",
       "name": "webapp-testing",
       "version": "1.0.0",
-      "description": "Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.",
+      "description": "使用 Playwright 與本地網頁應用程式互動及執行測試的工具組。支援驗證前端功能、除錯 UI 行為、擷取瀏覽器螢幕截圖及查看瀏覽器日誌。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
@@ -237,7 +247,7 @@
       "id": "mcp-xlsx-processor",
       "name": "xlsx",
       "version": "1.0.0",
-      "description": "Comprehensive spreadsheet creation, editing, and analysis with support for formulas, formatting, data analysis, and visualization. When Claude needs to work with spreadsheets (.xlsx, .xlsm, .csv, .tsv, etc) for: (1) Creating new spreadsheets with formulas and formatting, (2) Reading or analyzing data, (3) Modify existing spreadsheets while preserving formulas, (4) Data analysis and visualization in spreadsheets, or (5) Recalculating formulas",
+      "description": "全面的試算表建立、編輯與分析工具，支援公式、格式設定、數據分析與視覺化。當需要處理試算表（.xlsx、.xlsm、.csv、.tsv 等）時使用，包含：(1) 建立含公式與格式的新試算表，(2) 讀取或分析數據，(3) 在保留公式的情況下修改現有試算表，(4) 試算表中的數據分析與視覺化，(5) 重新計算公式。",
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false,
