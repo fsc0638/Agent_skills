@@ -1,4 +1,9 @@
+"""
+Manifest Generator — generates skills_manifest.json with multilingual tags.
+Reads SKILL.md YAML frontmatter and computes tags using shared/stop_words.json.
+"""
 import os
+import sys
 import yaml
 import json
 import logging
@@ -10,7 +15,20 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_DIR = os.path.join(PROJECT_ROOT, "skills")
 MANIFEST_PATH = os.path.join(PROJECT_ROOT, "skills_manifest.json")
 
+# Add parent of Agent_skills to sys.path so we can import adapters
+sys.path.insert(0, os.path.dirname(PROJECT_ROOT))
+
+
 def generate_manifest():
+    # Import extract_tags (which loads stop_words.json automatically)
+    try:
+        from adapters import extract_tags
+        has_tagger = True
+        logger.info("Tag extraction module loaded (multilingual)")
+    except ImportError:
+        has_tagger = False
+        logger.warning("adapters module not found — tags will be empty")
+
     manifest = {
         "version": "1.0.0",
         "skills": []
@@ -38,25 +56,33 @@ def generate_manifest():
                     parts = content.split('---', 2)
                     if len(parts) >= 3:
                         metadata = yaml.safe_load(parts[1])
-                        
-                        # Extract and refine data
+
+                        # Compute tags using multilingual pipeline
+                        tags = []
+                        if has_tagger:
+                            tags = extract_tags(
+                                metadata.get("description", ""),
+                                name=metadata.get("name", skill_name)
+                            )
+
                         manifest["skills"].append({
                             "id": skill_name,
                             "name": metadata.get("name", skill_name),
                             "version": metadata.get("version", "1.0.0"),
                             "description": metadata.get("description", "").strip(),
+                            "tags": tags,
                             "runtime_requirements": metadata.get("runtime_requirements", []),
                             "estimated_tokens": metadata.get("estimated_tokens", 500),
                             "requires_venv": metadata.get("requires_venv", False),
                             "parameters": metadata.get("parameters", {})
                         })
-                        logger.info(f"Indexed skill: {skill_name}")
+                        logger.info(f"Indexed skill: {skill_name} ({len(tags)} tags)")
         except Exception as e:
             logger.error(f"Failed to index {skill_name}: {e}")
 
     with open(MANIFEST_PATH, 'w', encoding='utf-8') as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
-    
+
     logger.info(f"Manifest generated at: {MANIFEST_PATH}")
 
 if __name__ == "__main__":
