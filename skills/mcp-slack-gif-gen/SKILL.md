@@ -1,6 +1,6 @@
 ---
 
-name: slack-gif-creator
+name: mcp-slack-gif-gen
 version: "1.0.0"
 description: 為 Slack 優化的 GIF 動畫製作知識與工具組。提供規格限制、驗證工具和動畫概念。當使用者要求製作 Slack 用的 GIF 動畫時使用，例如「幫我做一個 X 在做 Y 的 Slack 用 GIF」。
 license: Complete terms in LICENSE.txt

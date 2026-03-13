@@ -1,6 +1,6 @@
 ---
 
-name: canvas-design
+name: mcp-canvas-design
 version: "1.0.0"
 description: 使用設計理念在 .png 和 .pdf 文件中建立美麗的視覺藝術。當使用者要求建立海報、藝術品、設計或其他靜態作品時，應使用此技能。建立原創視覺設計，絕不複製現有藝術家的作品，以避免侵犯版權。
 license: Complete terms in LICENSE.txt

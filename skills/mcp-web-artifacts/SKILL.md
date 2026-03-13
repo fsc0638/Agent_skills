@@ -1,6 +1,6 @@
 ---
 
-name: web-artifacts-builder
+name: mcp-web-artifacts
 version: "1.0.0"
 description: 使用現代前端網頁技術（React、Tailwind CSS、shadcn/ui）建立精緻多元件 Claude.ai HTML 成品的工具套件。適用於需要狀態管理、路由或 shadcn/ui 元件的複雜成品——不適用於簡單的單檔案 HTML/JSX 成品。
 license: Complete terms in LICENSE.txt

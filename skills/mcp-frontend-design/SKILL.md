@@ -1,6 +1,6 @@
 ---
 
-name: frontend-design
+name: mcp-frontend-design
 version: "1.0.0"
 description: 製作具有高設計品質的獨特、生產等級前端介面。當使用者要求建立網頁元件、頁面、成品、海報或應用程式時使用此技能（例如網站、登陸頁、儀表板、React 元件、HTML/CSS 版型，或對任何網頁 UI 進行美化設計）。生成富有創意、精緻的程式碼與 UI 設計，避免產生通用的 AI 風格。
 license: Complete terms in LICENSE.txt

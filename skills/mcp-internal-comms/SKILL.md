@@ -1,6 +1,6 @@
 ---
 
-name: internal-comms
+name: mcp-internal-comms
 version: "1.0.0"
 description: 一套協助撰寫各類內部溝通訊息的資源，採用公司慣用的格式。當被要求撰寫任何形式的內部通訊時使用此技能（例如：狀態報告、主管更新、3P 更新、公司電子報、FAQ、事故報告、專案更新等）。
 license: Complete terms in LICENSE.txt

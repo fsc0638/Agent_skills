@@ -1,6 +1,6 @@
 ---
 
-name: theme-factory
+name: mcp-theme-factory
 version: "1.0.0"
 description: 為各類成品套用視覺主題的工具組，適用於簡報、文件、報告、HTML 登陸頁等。提供 10 個預設主題（含顏色 / 字體），可套用至任何現有成品，也可即時生成自訂主題。
 license: Complete terms in LICENSE.txt

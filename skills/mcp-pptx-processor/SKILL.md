@@ -1,6 +1,6 @@
 ---
 
-name: pptx
+name: mcp-pptx-processor
 version: "1.0.0"
 description: "簡報建立、編輯與分析。當 AI 需要處理簡報（.pptx 檔案）以進行：(1) 建立新簡報、(2) 修改或編輯內容、(3) 處理版面配置、(4) 新增備註或演講者備忘稿，或任何其他簡報任務時使用。"
 license: Proprietary. LICENSE.txt has complete terms

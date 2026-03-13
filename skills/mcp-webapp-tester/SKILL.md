@@ -1,6 +1,6 @@
 ---
 
-name: webapp-testing
+name: mcp-webapp-tester
 version: "1.0.0"
 description: 使用 Playwright 與本地網頁應用程式互動及執行測試的工具組。支援驗證前端功能、除錯 UI 行為、擷取瀏覽器螢幕截圖及查看瀏覽器日誌。
 license: Complete terms in LICENSE.txt

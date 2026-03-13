@@ -1,6 +1,6 @@
 ---
 
-name: mcp-builder
+name: mcp-skill-builder
 version: "1.0.0"
 description: 建立高品質 MCP（Model Context Protocol）伺服器的指南，讓 LLM 能透過精心設計的工具與外部服務互動。在建立 MCP 伺服器以整合外部 API 或服務時使用，無論是 Python（FastMCP）或 Node/TypeScript（MCP SDK）皆適用。
 license: Complete terms in LICENSE.txt

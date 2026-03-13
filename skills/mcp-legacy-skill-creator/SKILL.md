@@ -1,6 +1,6 @@
 ---
 
-name: skill-creator
+name: mcp-legacy-skill-creator
 version: "1.0.0"
 description: 建立有效技能的指導文件。當使用者想建立新技能（或更新現有技能），以專業知識、工作流程或工具整合來擴充 AI 的能力時，應使用此技能。
 license: Complete terms in LICENSE.txt

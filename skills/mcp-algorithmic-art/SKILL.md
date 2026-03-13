@@ -1,6 +1,6 @@
 ---
 
-name: algorithmic-art
+name: mcp-algorithmic-art
 version: "1.0.0"
 description: 使用 p5.js、種子隨機性和互動式參數探索來創作演算法藝術。當使用者要求使用程式碼、生成藝術、演算法藝術、流動場 (flow fields) 或粒子系統創作藝術時使用此技能。創作原創演算法藝術，避免複製現有藝術家的作品以避免侵犯版權。
 license: Complete terms in LICENSE.txt
