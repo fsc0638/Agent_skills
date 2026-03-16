@@ -105,6 +105,38 @@
       }
     },
     {
+      "id": "mcp-txt-processor",
+      "name": "mcp-txt-processor",
+      "version": "1.0.0",
+      "description": "你是一位精通自然語言處理與資料工程的專家。你的目標是將雜亂的 .txt 原始檔案轉化為乾淨、有組織、且易於閱讀的精華資訊。",
+      "tags": [
+        "mcp",
+        "txt",
+        "processor",
+        "一位",
+        "精通",
+        "自然",
+        "語言",
+        "資料",
+        "工程",
+        "專家",
+        "目標",
+        "將雜",
+        "原始",
+        "檔案",
+        "轉化",
+        "乾淨",
+        "組織",
+        "且易",
+        "閱讀",
+        "精華資訊"
+      ],
+      "runtime_requirements": [],
+      "estimated_tokens": 500,
+      "requires_venv": false,
+      "parameters": {}
+    },
+    {
       "id": "mcp-web-search",
       "name": "mcp-web-search",
       "version": "1.0.0",
