@@ -6,25 +6,33 @@ import traceback
 def main():
     # The UMA ExecutionEngine injects parameters as SKILL_PARAM_NAME
     code = os.getenv("SKILL_PARAM_CODE", "")
-    
+
     if not code:
         print(json.dumps({"status": "error", "message": "No code provided"}, ensure_ascii=False))
         return
 
-    # To capture print output, we could redirect stdout, 
-    # but the simplest way is to just let it print to the console
-    # which the ExecutionEngine captures.
-    
+    # Safety net: set CWD to workspace/downloads so that any file output
+    # with a relative path (e.g. pdf.output('report.pdf')) lands in the
+    # directory served by the /downloads/ endpoint.
+    # This prevents 404 errors when LLM-generated code forgets the full path.
     try:
-        # We use exec() to run the code.
-        # We provide a clean global dict but include some common modules.
-        # SECURITY WARNING: In a real production system, you'd use a safer sandbox.
-        # For this demo, we assume trust.
-        
+        from pathlib import Path
+        # Navigate from skills home → project root → workspace/downloads
+        skills_home = os.getenv("SKILLS_HOME", "")
+        if skills_home:
+            downloads_dir = Path(skills_home).resolve().parent / "workspace" / "downloads"
+        else:
+            downloads_dir = Path(__file__).resolve().parents[3] / "workspace" / "downloads"
+        downloads_dir.mkdir(parents=True, exist_ok=True)
+        os.chdir(str(downloads_dir))
+    except Exception:
+        pass  # Non-fatal: if CWD change fails, code may still use absolute paths
+
+    try:
         # Capture stdout
         import io
         from contextlib import redirect_stdout
-        
+
         f = io.StringIO()
         with redirect_stdout(f):
             exec(code)
