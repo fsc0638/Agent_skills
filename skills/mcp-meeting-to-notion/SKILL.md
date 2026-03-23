@@ -22,6 +22,9 @@ parameters:
     department_code:
       type: string
       description: "選填。指定責任部門代碼（如 Y200、T251），會覆蓋 AI 自動判斷結果"
+    meeting_date:
+      type: string
+      description: "選填。會議日期（格式 yyyy-mm-dd 或 yyyymmdd），用於來源欄位前綴。未指定則使用上傳當天日期"
   required: [transcript]
 runtime_requirements: [requests, openai]
 estimated_tokens: 1200

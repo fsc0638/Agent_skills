@@ -207,19 +207,17 @@ def phase2_org_parse(
     result = call_llm(prompt, max_tokens=2048)
     org_data = extract_json(result)
 
-    # ── Hallucination Guard: strict validation for 負責人 ──
-    OBVIOUS_FAKES = {"王小華", "張偉", "李強", "王強", "陳明", "李佳", "張麗", "王芳"}
-
+    # ── Hallucination Guard: STRICT validation for ALL person fields ──
+    # Every name must exist in the employee list. No exceptions.
+    # This prevents LLM from inventing plausible-sounding names.
     if employee_names:
-        # Strict: 負責人 must be in employee list
-        if isinstance(org_data.get("負責人"), list):
-            valid = [n for n in org_data["負責人"] if n == "待指派" or n in employee_names]
-            org_data["負責人"] = valid if valid else ["待指派"]
-
-        # Relaxed: 識別人員 / 執行人 — only block obvious fakes
-        for field in ["識別人員", "執行人"]:
+        for field in ["負責人", "識別人員", "執行人"]:
             if isinstance(org_data.get(field), list):
-                org_data[field] = [n for n in org_data[field] if n not in OBVIOUS_FAKES]
+                valid = [n for n in org_data[field] if n == "待指派" or n in employee_names]
+                if field == "負責人":
+                    org_data[field] = valid if valid else ["待指派"]
+                else:
+                    org_data[field] = valid  # Can be empty list for 識別人員/執行人
 
     # Force override with user-specified department
     if department_code:
@@ -235,12 +233,17 @@ def phase3_schema_map(
     org_data: dict,
     language: str,
     source_options: list,
+    base_date_compact: str = "",
+    base_date_iso: str = "",
 ) -> list:
     """Convert cleaned text + org data → Notion JSON Array."""
     template = load_prompt("phase3_schema_mapper.txt")
 
+    # 建立時間: always actual upload time (not meeting_date)
     today = datetime.now().strftime("%Y-%m-%d")
-    date_compact = datetime.now().strftime("%Y%m%d")
+    # 專案前綴 & 到期日推算: use base_date (meeting_date or upload date)
+    date_compact = base_date_compact or datetime.now().strftime("%Y%m%d")
+    reference_date = base_date_iso or today
     # Validate department code: must be alphanumeric (e.g. T255, Y200, KWAY)
     # Fallback to "KWAY" if LLM returned non-code values like "待指派", "N/A", etc.
     _raw_dept = org_data.get("責任部門代碼", "KWAY") or "KWAY"
@@ -265,6 +268,7 @@ def phase3_schema_map(
         .replace("{candidate_str}", candidate_str)
         .replace("{meeting_lead}", meeting_lead)
         .replace("{source_options}", source_str)
+        .replace("{reference_date}", reference_date)
         .replace("{today}", today)
         .replace("{cleaned_text}", cleaned_text)
     )
@@ -296,13 +300,16 @@ GARBAGE_WORDS = {"然後", "那個", "比較", "就是", "出來", "這樣子", 
 ALLOWED_STATUSES = {"未開始", "進行中", "完成", "已完成"}
 
 
-def phase4_qa_inspect(items: list, source_options: list) -> tuple[list, list]:
+def phase4_qa_inspect(items: list, source_options: list, date_prefix: str = "") -> tuple[list, list]:
     """
     Validate and clean the JSON array. Returns (clean_items, errors).
     Fixes minor issues in-place; flags major issues in errors list.
+    date_prefix: yyyymmdd string to prepend to 來源 values (e.g. "20260323_會議記錄")
     """
     errors = []
     today = datetime.now().strftime("%Y-%m-%d")
+    if not date_prefix:
+        date_prefix = datetime.now().strftime("%Y%m%d")
     source_set = set(source_options)
 
     for idx, item in enumerate(items):
@@ -371,6 +378,13 @@ def phase4_qa_inspect(items: list, source_options: list) -> tuple[list, list]:
                 "found": invalid_sources,
                 "replaced_with": item["來源"],
             })
+
+        # 4.5b Prepend date prefix to source values (e.g. "會議記錄" → "20260323_會議記錄")
+        if date_prefix:
+            item["來源"] = [
+                f"{date_prefix}_{s}" if not s.startswith(date_prefix) else s
+                for s in item["來源"]
+            ]
 
         # 4.6 Ensure array fields are arrays
         for field in ["專案", "負責人", "執行人", "責任部門", "階段里程碑", "關鍵詞", "來源"]:
@@ -539,6 +553,8 @@ def main():
     transcript = os.getenv("SKILL_PARAM_TRANSCRIPT", "")
     language = os.getenv("SKILL_PARAM_LANGUAGE", "繁體中文")
     department_code = os.getenv("SKILL_PARAM_DEPARTMENT_CODE", "") or None
+    # Optional: user-specified date for source prefix (yyyymmdd or yyyy-mm-dd)
+    meeting_date = os.getenv("SKILL_PARAM_MEETING_DATE", "") or None
 
     if not transcript:
         print(json.dumps({"status": "error", "message": "未提供會議逐字稿內容 (transcript 參數為空)"}, ensure_ascii=False))
@@ -568,11 +584,26 @@ def main():
         # ── Phase 2: Org Parser ──
         org_data = phase2_org_parse(cleaned_text, department_code, employee_names, department_list)
 
+        # ── Resolve base date: user-specified meeting_date > upload today ──
+        # This date is used for: 專案前綴, 來源前綴, 到期日推算基準
+        # 建立時間 always uses actual upload datetime (不受 meeting_date 影響)
+        _base_date_compact = ""
+        if meeting_date:
+            _base_date_compact = meeting_date.replace("-", "").replace("/", "")[:8]
+        if not _base_date_compact or len(_base_date_compact) != 8:
+            _base_date_compact = datetime.now().strftime("%Y%m%d")
+        # Convert to yyyy-mm-dd for prompt injection
+        _base_date_iso = f"{_base_date_compact[:4]}-{_base_date_compact[4:6]}-{_base_date_compact[6:8]}"
+
         # ── Phase 3: Schema Mapper ──
-        json_array = phase3_schema_map(cleaned_text, org_data, language, source_options)
+        json_array = phase3_schema_map(
+            cleaned_text, org_data, language, source_options,
+            base_date_compact=_base_date_compact,
+            base_date_iso=_base_date_iso,
+        )
 
         # ── Phase 4: QA Inspector ──
-        validated_items, qa_errors = phase4_qa_inspect(json_array, source_options)
+        validated_items, qa_errors = phase4_qa_inspect(json_array, source_options, date_prefix=_base_date_compact)
 
         # ── Upload to Notion ──
         upload_results = upload_to_notion(validated_items, notion_token, notion_db_id)
