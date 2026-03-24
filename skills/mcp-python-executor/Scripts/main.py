@@ -18,11 +18,12 @@ def main():
     try:
         from pathlib import Path
         # Navigate from skills home → project root → workspace/downloads
+        # SKILLS_HOME = PROJECT_ROOT/Agent_skills/skills → .parent.parent = PROJECT_ROOT
         skills_home = os.getenv("SKILLS_HOME", "")
         if skills_home:
-            downloads_dir = Path(skills_home).resolve().parent / "workspace" / "downloads"
+            downloads_dir = Path(skills_home).resolve().parent.parent / "workspace" / "downloads"
         else:
-            downloads_dir = Path(__file__).resolve().parents[3] / "workspace" / "downloads"
+            downloads_dir = Path(__file__).resolve().parents[4] / "workspace" / "downloads"
         downloads_dir.mkdir(parents=True, exist_ok=True)
         os.chdir(str(downloads_dir))
     except Exception:
