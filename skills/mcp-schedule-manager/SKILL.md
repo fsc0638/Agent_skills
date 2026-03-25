@@ -39,12 +39,14 @@ parameters:
     config:
       type: object
       description: >
-        任務設定（依 task_type 不同）：
-        news: {"topic": "科技", "count": 5}
+        【重要：必須完整填入使用者的需求細節】任務設定（依 task_type 不同）：
+        news: {"topic": "經濟", "count": 20, "extra_instructions": "包含國際趨勢與房市股市相關議題，內容越詳盡越好，標記出處，並統整成PDF供下載"}
         work_summary: {"days": 7}
         language: {"language": "日文", "level": "N3", "count": 5, "topic": "商務"}
-        custom: {"prompt": "你的自訂指令"}
+        custom: {"prompt": "使用者的完整指令內容"}
         reminder: {"message": "提醒內容"}
+        注意：使用者提到的數量、主題、格式要求（如製作PDF）等，都必須填入 config 中。
+        若使用者有特殊需求（如產出PDF、包含特定主題），請填入 extra_instructions 欄位。
     task_id:
       type: string
       description: "任務 ID（remove/pause/resume/trigger 時需要）"
