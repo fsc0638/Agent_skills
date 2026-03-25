@@ -655,6 +655,13 @@
               "advanced"
             ],
             "description": "搜尋深度。預設為 basic。只有使用者明確要求『深度研究』或『詳細分析』時才使用 advanced。"
+          },
+          "include_domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "選填。限制搜尋範圍至特定網域清單，例如 ['udn.com', 'ltn.com.tw']。用於地區偏好或來源過濾。"
           }
         },
         "required": []

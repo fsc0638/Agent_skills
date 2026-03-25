@@ -15,6 +15,7 @@ def main():
     target_url = args.get("target_url")
     search_depth = args.get("search_depth", "basic")
     max_results = int(args.get("max_results", 3))
+    include_domains = args.get("include_domains", [])  # e.g. ["udn.com", "ltn.com.tw"]
 
     # 2. 取得 API Key
     api_key = os.environ.get("TAVILY_API_KEY")
@@ -38,6 +39,8 @@ def main():
             "max_results": max_results,
             "include_raw_content": True if search_depth == "advanced" else False
         })
+        if include_domains:
+            payload["include_domains"] = include_domains
 
     try:
         response = requests.post(url, json=payload, timeout=30)
