@@ -40,7 +40,15 @@ parameters:
       type: object
       description: >
         【重要：必須完整填入使用者的需求細節】任務設定（依 task_type 不同）：
-        news: {"topic": "經濟", "count": 20, "extra_instructions": "包含國際趨勢與房市股市相關議題，內容越詳盡越好，標記出處，並統整成PDF供下載"}
+        news: {"topic": "經濟", "count": 20, "detail": "detailed", "extra_instructions": "包含國際趨勢與房市股市，標記出處，統整成PDF供下載"}
+          - topic: 新聞主題關鍵字
+          - count: 新聞數量
+          - detail: 摘要深度，三種等級：
+            "brief"（精簡：5-10句）
+            "normal"（正常：10-20句，預設）
+            "detailed"（詳盡：至少25句深度報導）
+            使用者說「詳盡/詳細/深入」→ "detailed"，說「簡單/精簡/簡要」→ "brief"，其他→ "normal"
+          - extra_instructions: 額外需求（如特定子主題、產出PDF等）
         work_summary: {"days": 7}
         language: {"language": "日文", "level": "N3", "count": 5, "topic": "商務"}
         custom: {"prompt": "使用者的完整指令內容"}
