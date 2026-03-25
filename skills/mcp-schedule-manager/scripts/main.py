@@ -84,6 +84,7 @@ def main():
     # Session info from environment (injected by adapter)
     session_id = os.getenv("SESSION_ID", "")
     chat_id = os.getenv("CHAT_ID", "")
+    user_original_request = os.getenv("USER_ORIGINAL_REQUEST", "")
 
     # Resolve paths
     project_root = _resolve_project_root()
@@ -125,6 +126,10 @@ def main():
             name = type_names.get(task_type, "定時推送")
 
         parsed_cron = _parse_cron(cron)
+
+        # Always store the user's original request for fallback prompt generation
+        if user_original_request and "original_request" not in task_config:
+            task_config["original_request"] = user_original_request
 
         task = {
             "id": f"task_{uuid.uuid4().hex[:8]}",
