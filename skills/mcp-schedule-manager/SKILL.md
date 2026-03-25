@@ -1,7 +1,7 @@
 ---
 name: mcp-schedule-manager
 provider: mcp
-version: 1.2.0
+version: 1.3.0
 runtime_requirements: []
 description: >
   定時推送與提醒管理工具。當使用者要求「每天早上推送新聞」、「每週五下班前提醒我」、
@@ -39,8 +39,37 @@ parameters:
         - 一次性：'once +10m' 表示 10 分鐘後（用於 reminder 或一次性任務）
     config:
       type: object
-      description: >
-        任務設定，依 task_type 填入對應欄位（見下方完整說明）。
+      description: "任務設定，依 task_type 填入對應欄位。絕不可填入未定義的欄位。"
+      properties:
+        topic:
+          type: string
+          description: "[適用 news/language] 主題或關鍵字"
+        count:
+          type: integer
+          description: "[適用 news/language] 數量"
+        detail:
+          type: string
+          enum: ["detailed", "brief", "normal"]
+          description: "[適用 news] 摘要深度"
+        extra_instructions:
+          type: string
+          description: "[適用 news] 額外需求，例如產出PDF或指定來源"
+        days:
+          type: integer
+          description: "[適用 work_summary] 統整天數"
+        language:
+          type: string
+          description: "[適用 language] 語言種類"
+        level:
+          type: string
+          description: "[適用 language] 難度等級，如 N3"
+        prompt:
+          type: string
+          description: "[適用 custom] 完整使用者原文"
+        message:
+          type: string
+          description: "[適用 reminder] 提醒內容"
+      additionalProperties: false
     task_id:
       type: string
       description: "任務 ID（remove/pause/resume/trigger 時需要）"
@@ -79,6 +108,7 @@ execution_timeout: 10
 1. **禁止堆疊**：嚴禁將所有資訊塞入 config.original_request 或 config.prompt。必須拆解到各欄位。
 2. **資訊拆解**：將主題、數量、深度、格式需求、子主題分別提取到對應欄位。
 3. **類型判定優先**：先匹配專用類型（news > work_summary > language > reminder），都不匹配才用 custom。
+4. **時間基準約束**：所有排程時間預設為本地時間（GMT+8）。當使用者給出絕對時間（如「明天下午3點」）且非循環任務時，若不支援絕對日期格式，必須轉換為等效的相對時間 `once +Xm` 或標準排程格式。嚴禁輸出排程引擎無法識別的格式（如「tomorrow 15:00」、中文時間描述）。
 
 ### # Field Mapping Logic（欄位對齊邏輯）
 
@@ -93,7 +123,7 @@ execution_timeout: 10
 
 ⚠️ **「X分鐘後」是排程時間，不是類型判定依據！**
 - 「2分鐘後統整新聞」→ type=**news**（有「新聞」）, cron="once +2m"
-- 「10分鐘後提醒我開會」→ type=**reminder**（純提醒，無內容生成）
+- 「10分鐘後提醒我開會」→ type=**reminder**（純提醒，語氣請幽默風趣切勿死板）
 
 **第二步：提取 config 欄位（依 task_type）**
 
@@ -299,3 +329,25 @@ execution_timeout: 10
 - **cron**（add 時必填）：排程時間表達式
 - **config**（add 時必填）：內容設定，**必須根據 task_type 填入對應欄位，禁止為空**
 - **task_id**（remove/pause/resume/trigger 時必填）：目標任務 ID
+
+---
+
+## 執行後回覆規範 (Post-Action Response)
+
+當成功呼叫此工具並取得成功回應後，你對使用者的最終回覆必須「**簡潔且僅確認狀態**」。
+
+🚫 **嚴禁在回覆中附加任何以下內容：**
+- 預覽或預先生成的任務內容（新聞摘要、提醒文字、工作統整等）
+- 「以下是即將為您推送的內容…」之類的預覽
+- 「系統正在為您準備…」之類的進度說明
+
+✅ **標準回覆格式（照此輸出，不可偏離）：**
+
+```
+✅ 已為您設定排程：**[任務名稱]**
+系統將會在 **[排程時間/觸發條件]** 自動為您執行。
+```
+
+**範例：**
+> ✅ 已為您設定排程：**2分鐘後社會案件新聞統整**
+> 系統將會在 **2 分鐘後（14:57）** 自動為您執行。
