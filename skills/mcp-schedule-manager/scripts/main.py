@@ -75,13 +75,19 @@ def _parse_cron(cron_str: str) -> dict:
 
 _NEWS_KEYWORDS = {"新聞", "news", "頭條", "時事", "報導"}
 _DOMAIN_KEYWORDS = [
+    # Finance / Economy
     "經濟", "股市", "房市", "金融", "財經", "投資", "貿易", "匯率", "利率",
     "加密貨幣", "區塊鏈", "房地產", "基金", "債券", "期貨", "外匯",
+    # Tech
     "科技", "AI", "半導體", "電動車", "生技", "5G", "量子", "機器人",
     "雲端", "資安", "晶片", "軟體",
+    # Industry / Sector
     "產業", "能源", "航運", "零售", "製造", "農業", "觀光", "旅遊",
-    "政治", "國際", "軍事", "外交", "社會", "教育", "體育", "娛樂",
-    "醫療", "健康", "環境", "氣候", "法律", "社會案件", "犯罪", "司法",
+    # Society / Crime / Law
+    "政治", "國際", "軍事", "外交", "社會", "社會案件", "社會事件",
+    "犯罪", "警政", "刑事", "詐騙", "治安",
+    "教育", "體育", "娛樂",
+    "醫療", "健康", "環境", "氣候", "法律", "法規",
 ]
 _STOPWORDS = {
     "分鐘", "小時", "天", "週", "月", "年", "後", "前", "每天", "每日",
@@ -110,10 +116,48 @@ def _extract_topic(text: str) -> str:
 
 def _auto_correct_task_type(task_type: str, task_config: dict, original_request: str):
     """
-    If LLM classified as 'custom' or 'reminder' but original_request is clearly
-    a news request, auto-correct to 'news' and extract structured fields.
+    1. If LLM classified as 'custom'/'reminder' but original_request is clearly
+       a news request, auto-correct to 'news' and extract structured fields.
+    2. If type is already 'news' but key fields (topic/count/detail) are missing,
+       infer them from original_request to prevent defaults like '經濟'.
     """
     import re
+
+    # ── Case 2: type is already 'news' but fields are missing ──
+    if task_type == "news":
+        text = original_request or task_config.get("original_request", "")
+        if text:
+            _needs_infer = (
+                not task_config.get("topic")
+                or not task_config.get("count")
+                or not task_config.get("detail")
+            )
+            if _needs_infer:
+                inferred = {}
+                if not task_config.get("count"):
+                    m = re.search(r'(\d+)\s*[則條篇筆]', text)
+                    inferred["count"] = int(m.group(1)) if m else 10
+                if not task_config.get("detail"):
+                    if any(kw in text for kw in ["詳盡", "詳細", "深入", "越詳盡越好", "越詳細越好"]):
+                        inferred["detail"] = "detailed"
+                    elif any(kw in text for kw in ["簡要", "精簡", "簡單"]):
+                        inferred["detail"] = "brief"
+                    else:
+                        inferred["detail"] = "normal"
+                if not task_config.get("topic"):
+                    inferred["topic"] = _extract_topic(text)
+                if not task_config.get("extra_instructions"):
+                    extra = []
+                    if any(kw in text.lower() for kw in ["pdf", "下載"]):
+                        extra.append("統整成PDF供下載")
+                    if any(kw in text for kw in ["標記出處", "出處", "來源"]):
+                        extra.append("標記出處")
+                    if extra:
+                        inferred["extra_instructions"] = "，".join(extra)
+                task_config = {**task_config, **inferred}
+                import sys
+                print(f"[AUTO-INFER] Filled missing news fields: {inferred}", file=sys.stderr)
+        return task_type, task_config
 
     if task_type not in ("custom", "reminder"):
         return task_type, task_config
@@ -209,6 +253,44 @@ def main():
 
         # ── Auto-correct: fix LLM type misclassification before saving ──
         task_type, task_config = _auto_correct_task_type(task_type, task_config, user_original_request)
+
+        # ── Guard: Validate cron against user's actual request ──────────
+        # LLM sometimes carries over cron from previous conversation turn.
+        # If user_original_request explicitly says "X分鐘後" but cron doesn't match, fix it.
+        if user_original_request and cron.startswith("once"):
+            import re as _re
+            _time_m = _re.search(r'(\d+)\s*分鐘[後后]?', user_original_request)
+            if _time_m:
+                _req_min = int(_time_m.group(1))
+                _cron_m = _re.search(r'\+(\d+)\s*m', cron)
+                _cron_min = int(_cron_m.group(1)) if _cron_m else None
+                if _cron_min is not None and _cron_min != _req_min:
+                    _old = cron
+                    cron = f"once +{_req_min}m"
+                    import sys
+                    print(f"[GUARD] Corrected cron: {_old} → {cron} (user said {_req_min}分鐘)", file=sys.stderr)
+            else:
+                _time_h = _re.search(r'(\d+)\s*小時[後后]?', user_original_request)
+                if _time_h:
+                    _req_hr = int(_time_h.group(1))
+                    _cron_h = _re.search(r'\+(\d+)\s*h', cron)
+                    _cron_hr = int(_cron_h.group(1)) if _cron_h else None
+                    if _cron_hr is not None and _cron_hr != _req_hr:
+                        _old = cron
+                        cron = f"once +{_req_hr}h"
+                        import sys
+                        print(f"[GUARD] Corrected cron: {_old} → {cron} (user said {_req_hr}小時)", file=sys.stderr)
+
+        # ── Guard: Auto-correct name if it doesn't match task type ──────
+        # LLM sometimes copies name from previous task (e.g. "提醒看手機" for a news task)
+        _REMINDER_NAME_KW = {"提醒", "看手機", "開會", "買", "記得"}
+        if task_type == "news" and name and any(kw in name for kw in _REMINDER_NAME_KW):
+            _topic = task_config.get("topic", "綜合")
+            name = f"{_topic}新聞統整"
+            if task_config.get("extra_instructions") and "pdf" in task_config["extra_instructions"].lower():
+                name += "PDF"
+            import sys
+            print(f"[GUARD] Corrected name to: {name}", file=sys.stderr)
 
         if not name:
             type_names = {
