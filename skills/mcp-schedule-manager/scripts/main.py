@@ -73,6 +73,94 @@ def _parse_cron(cron_str: str) -> dict:
     return {"hour": 8, "minute": 0}
 
 
+_NEWS_KEYWORDS = {"新聞", "news", "頭條", "時事", "報導"}
+_DOMAIN_KEYWORDS = [
+    "經濟", "股市", "房市", "金融", "財經", "投資", "貿易", "匯率", "利率",
+    "加密貨幣", "區塊鏈", "房地產", "基金", "債券", "期貨", "外匯",
+    "科技", "AI", "半導體", "電動車", "生技", "5G", "量子", "機器人",
+    "雲端", "資安", "晶片", "軟體",
+    "產業", "能源", "航運", "零售", "製造", "農業", "觀光", "旅遊",
+    "政治", "國際", "軍事", "外交", "社會", "教育", "體育", "娛樂",
+    "醫療", "健康", "環境", "氣候", "法律", "社會案件", "犯罪", "司法",
+]
+_STOPWORDS = {
+    "分鐘", "小時", "天", "週", "月", "年", "後", "前", "每天", "每日",
+    "統整", "推送", "搜尋", "幫我", "給我", "整理", "製作", "產生", "生成",
+    "PDF", "pdf", "下載", "檔案", "文件",
+    "則", "條", "篇", "筆", "個",
+    "新聞", "頭條", "報導", "時事", "資訊", "相關", "議題", "主題",
+    "請", "並", "且", "與", "和", "的", "了",
+}
+
+
+def _extract_topic(text: str) -> str:
+    """Extract topic keywords from text (AutoScan-inspired)."""
+    import re
+    found = []
+    for kw in _DOMAIN_KEYWORDS:
+        if kw in text and kw not in found:
+            found.append(kw)
+    # "XXX相關" pattern
+    for m in re.finditer(r'([\u4e00-\u9fff]{2,6}?)相關', text):
+        cand = m.group(1)
+        if cand not in _STOPWORDS and cand not in found:
+            found.append(cand)
+    return " ".join(found) if found else "綜合"
+
+
+def _auto_correct_task_type(task_type: str, task_config: dict, original_request: str):
+    """
+    If LLM classified as 'custom' or 'reminder' but original_request is clearly
+    a news request, auto-correct to 'news' and extract structured fields.
+    """
+    import re
+
+    if task_type not in ("custom", "reminder"):
+        return task_type, task_config
+
+    text = original_request or task_config.get("original_request", "")
+    if not text:
+        return task_type, task_config
+
+    # Gate: must contain news keyword
+    if not any(kw in text.lower() for kw in _NEWS_KEYWORDS):
+        return task_type, task_config
+
+    # It's a news request — extract structured fields
+    inferred = {}
+
+    # count
+    m = re.search(r'(\d+)\s*[則條篇筆]', text)
+    inferred["count"] = int(m.group(1)) if m else 10
+
+    # detail
+    if any(kw in text for kw in ["詳盡", "詳細", "深入", "越詳盡越好", "越詳細越好"]):
+        inferred["detail"] = "detailed"
+    elif any(kw in text for kw in ["簡要", "精簡", "簡單"]):
+        inferred["detail"] = "brief"
+    else:
+        inferred["detail"] = "normal"
+
+    # topic
+    inferred["topic"] = _extract_topic(text)
+
+    # extra_instructions
+    extra = []
+    if any(kw in text.lower() for kw in ["pdf", "下載"]):
+        extra.append("統整成PDF供下載")
+    if any(kw in text for kw in ["標記出處", "出處", "來源"]):
+        extra.append("標記出處")
+    incl_m = re.search(r'(?:包含|涵蓋|最好包含)(.*?)(?:[，,。]|$)', text)
+    if incl_m:
+        extra.append(incl_m.group(1).strip())
+    if extra:
+        inferred["extra_instructions"] = "，".join(extra)
+
+    # Merge: keep original_request, overlay inferred fields
+    new_config = {**task_config, **inferred}
+    return "news", new_config
+
+
 def main():
     action = os.getenv("SKILL_PARAM_ACTION", "list")
     task_type = os.getenv("SKILL_PARAM_TASK_TYPE", "custom")
@@ -115,6 +203,13 @@ def main():
 
     # ── ACTION: add ──
     if action == "add":
+        # Always store the user's original request for fallback prompt generation
+        if user_original_request and "original_request" not in task_config:
+            task_config["original_request"] = user_original_request
+
+        # ── Auto-correct: fix LLM type misclassification before saving ──
+        task_type, task_config = _auto_correct_task_type(task_type, task_config, user_original_request)
+
         if not name:
             type_names = {
                 "news": "每日新聞摘要",
@@ -126,10 +221,6 @@ def main():
             name = type_names.get(task_type, "定時推送")
 
         parsed_cron = _parse_cron(cron)
-
-        # Always store the user's original request for fallback prompt generation
-        if user_original_request and "original_request" not in task_config:
-            task_config["original_request"] = user_original_request
 
         task = {
             "id": f"task_{uuid.uuid4().hex[:8]}",
