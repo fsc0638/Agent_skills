@@ -1,7 +1,7 @@
 ---
 name: mcp-schedule-manager
 provider: mcp
-version: 1.0.0
+version: 1.1.0
 runtime_requirements: []
 description: >
   定時推送與提醒管理工具。當使用者要求「每天早上推送新聞」、「每週五下班前提醒我」、
@@ -23,7 +23,8 @@ parameters:
       description: >
         推送內容類型（僅 add 時需要）。
         news=新聞摘要、work_summary=工作項目統整、language=語言詞彙學習、
-        custom=自訂內容、reminder=一次性提醒
+        custom=自訂內容、reminder=一次性提醒。
+        【極重要】必須根據下方「類型判定規則」正確選擇，不可隨意使用 custom。
       enum: ["news", "work_summary", "language", "custom", "reminder"]
     name:
       type: string
@@ -35,26 +36,11 @@ parameters:
         - 簡單時間：'08:30' 表示每天 08:30
         - 工作日：'weekday 09:00' 表示週一到週五 09:00
         - 完整 cron：'30 8 * * 1-5' 表示平日 08:30
-        - 一次性：'once +10m' 表示 10 分鐘後（用於 reminder）
+        - 一次性：'once +10m' 表示 10 分鐘後（用於 reminder 或一次性任務）
     config:
       type: object
       description: >
-        【重要：必須完整填入使用者的需求細節】任務設定（依 task_type 不同）：
-        news: {"topic": "經濟", "count": 20, "detail": "detailed", "extra_instructions": "包含國際趨勢與房市股市，標記出處，統整成PDF供下載"}
-          - topic: 新聞主題關鍵字
-          - count: 新聞數量
-          - detail: 摘要深度，三種等級：
-            "brief"（精簡：5-10句）
-            "normal"（正常：10-20句，預設）
-            "detailed"（詳盡：至少25句深度報導）
-            使用者說「詳盡/詳細/深入」→ "detailed"，說「簡單/精簡/簡要」→ "brief"，其他→ "normal"
-          - extra_instructions: 額外需求（如特定子主題、產出PDF等）
-        work_summary: {"days": 7}
-        language: {"language": "日文", "level": "N3", "count": 5, "topic": "商務"}
-        custom: {"prompt": "使用者的完整指令內容"}
-        reminder: {"message": "提醒內容"}
-        注意：使用者提到的數量、主題、格式要求（如製作PDF）等，都必須填入 config 中。
-        若使用者有特殊需求（如產出PDF、包含特定主題），請填入 extra_instructions 欄位。
+        任務設定，依 task_type 填入對應欄位（見下方完整說明）。
     task_id:
       type: string
       description: "任務 ID（remove/pause/resume/trigger 時需要）"
@@ -74,17 +60,210 @@ execution_timeout: 10
 - 使用者說「每天早上X點推Y則新聞」
 - 使用者說「取消/暫停/恢復推送」
 - 使用者說「查看我的排程」
-- 使用者說「10分鐘後提醒我…」
+- 使用者說「10分鐘後提醒我…」、「2分鐘後幫我做…」
 
 ## 不適用場景
 - 單純聊天或問答
-- 檔案分析或生成
+- 檔案分析或生成（無排程意圖）
 - 即時搜尋（非定時）
+
+---
+
+## ⚠️ 類型判定規則（極重要 — 必須嚴格遵守）
+
+### 判定優先順序：先匹配專用類型，都不匹配才用 custom
+
+| 優先序 | 類型 | 判定條件 | 使用者說了什麼 |
+|--------|------|----------|----------------|
+| 1 | **news** | 提到「新聞」「頭條」「時事」「報導」「財經資訊」 | 「推送新聞」「統整新聞」「新聞摘要」「經濟新聞」 |
+| 2 | **work_summary** | 提到「工作摘要」「工作統整」「週報」「工作重點」 | 「推送工作摘要」「每週工作統整」 |
+| 3 | **language** | 提到「學習」「詞彙」「單字」「語言」且有語種 | 「日文學習」「英文單字」「N3詞彙」 |
+| 4 | **reminder** | 純粹提醒，不需要LLM生成內容 | 「提醒我開會」「10分鐘後提醒我」 |
+| 5 | **custom** | 以上都不匹配時的最後手段 | 「每天推送一則勵志名言」「每天推送笑話」 |
+
+### 🚫 禁止行為
+- **禁止把新聞需求設為 custom** — 只要提到「新聞」二字，type 必須是 `news`
+- **禁止把所有需求都設為 custom** — custom 是最後手段，不是預設值
+- **禁止 config 為空 `{}`** — 必須根據使用者需求填入對應欄位
+
+---
+
+## Config 完整規格（依 task_type 分類）
+
+### 📰 news — 新聞摘要
+```json
+{
+  "topic": "經濟",
+  "count": 20,
+  "detail": "detailed",
+  "extra_instructions": "包含國際趨勢與房市股市，標記出處，統整成PDF供下載"
+}
+```
+
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `topic` | ✅ | 新聞主題關鍵字（如「經濟」「科技」「AI」「國際」） |
+| `count` | ✅ | 新聞數量（使用者說「20則」→ 20，未指定 → 10） |
+| `detail` | ✅ | 摘要深度（見下方判定規則） |
+| `extra_instructions` | 選填 | 額外需求 |
+
+**detail 判定規則：**
+| 使用者用語 | detail 值 |
+|-----------|-----------|
+| 「詳盡」「詳細」「深入」「越詳盡越好」「內容越詳細越好」 | `"detailed"` |
+| 「簡要」「精簡」「簡單」「摘要就好」 | `"brief"` |
+| 其他或未指定 | `"normal"` |
+
+**extra_instructions 判定規則（從使用者原文提取）：**
+- 提到「PDF」「下載」「檔案」→ 加入「統整成PDF供下載」
+- 提到「包含…」「涵蓋…」→ 加入子主題要求
+- 提到「出處」「來源」「標記出處」→ 加入「標記出處」
+- 多個需求用逗號分隔
+
+### 📋 work_summary — 工作重點摘要
+```json
+{
+  "days": 7
+}
+```
+
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `days` | 選填 | 統整天數（預設 7 天） |
+
+### 📖 language — 語言詞彙學習
+```json
+{
+  "language": "日文",
+  "level": "N3",
+  "count": 5,
+  "topic": "商務"
+}
+```
+
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `language` | ✅ | 語言（日文/英文/韓文等） |
+| `level` | 選填 | 難度等級（N1-N5 / 初級/中級/高級） |
+| `count` | 選填 | 詞彙數量（預設 5） |
+| `topic` | 選填 | 主題領域（商務/旅遊/日常等） |
+
+### ✏️ custom — 自訂內容（最後手段）
+```json
+{
+  "prompt": "使用者的完整指令內容，逐字保留不可省略"
+}
+```
+
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `prompt` | ✅ | 使用者原文需求（完整保留） |
+
+### ⏰ reminder — 一次性提醒
+```json
+{
+  "message": "下午3點要開會"
+}
+```
+
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `message` | ✅ | 提醒內容 |
+
+---
+
+## 正確範例 ✅ vs 錯誤範例 ❌
+
+### 範例 1：新聞需求
+使用者：「2分鐘後統整20則經濟新聞給我，包含國際趨勢與房市股市相關議題，內容越詳盡越好，請標記出處，並統整成PDF給我下載」
+
+✅ **正確：**
+```json
+{
+  "action": "add",
+  "task_type": "news",
+  "name": "2分鐘後經濟新聞統整PDF",
+  "cron": "once +2m",
+  "config": {
+    "topic": "經濟",
+    "count": 20,
+    "detail": "detailed",
+    "extra_instructions": "包含國際趨勢與房市股市相關議題，標記出處，統整成PDF供下載"
+  }
+}
+```
+
+❌ **錯誤（絕對禁止）：**
+```json
+{
+  "action": "add",
+  "task_type": "custom",
+  "name": "2分鐘後統整20則經濟新聞並製成PDF",
+  "cron": "once +2m",
+  "config": {
+    "original_request": "2分鐘後統整20則經濟新聞..."
+  }
+}
+```
+→ 提到「新聞」就必須用 `news`，且必須拆解出 topic/count/detail/extra_instructions
+
+### 範例 2：語言學習
+使用者：「每天早上9點推送5個日文N3商務詞彙」
+
+✅ **正確：**
+```json
+{
+  "action": "add",
+  "task_type": "language",
+  "name": "每日日文N3商務學習",
+  "cron": "09:00",
+  "config": {
+    "language": "日文",
+    "level": "N3",
+    "count": 5,
+    "topic": "商務"
+  }
+}
+```
+
+### 範例 3：一次性提醒
+使用者：「10分鐘後提醒我去開會」
+
+✅ **正確：**
+```json
+{
+  "action": "add",
+  "task_type": "reminder",
+  "name": "開會提醒",
+  "cron": "once +10m",
+  "config": {
+    "message": "該去開會了！"
+  }
+}
+```
+
+### 範例 4：真正的 custom（非新聞/非工作/非語言）
+使用者：「每天早上推送一則勵志名言給我」
+
+✅ **正確（這才是 custom 的正確使用場景）：**
+```json
+{
+  "action": "add",
+  "task_type": "custom",
+  "name": "每日勵志名言",
+  "cron": "08:00",
+  "config": {
+    "prompt": "請生成一則勵志名言，包含名言內容、出處作者、以及一段30字以內的心得感悟。用繁體中文。"
+  }
+}
+```
+
+---
 
 ## 參數說明
 - **action**（必填）：操作類型
-- **task_type**（add 時必填）：推送內容類型
+- **task_type**（add 時必填）：推送內容類型，**必須根據「類型判定規則」正確選擇**
 - **name**（add 時建議）：任務顯示名稱
 - **cron**（add 時必填）：排程時間表達式
-- **config**（add 時選填）：內容設定
-- **task_id**（remove/pause/resume 時必填）：目標任務 ID
+- **config**（add 時必填）：內容設定，**必須根據 task_type 填入對應欄位，禁止為空**
+- **task_id**（remove/pause/resume/trigger 時必填）：目標任務 ID
