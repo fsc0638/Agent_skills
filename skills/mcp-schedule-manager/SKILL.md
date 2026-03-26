@@ -1,7 +1,7 @@
 ---
 name: mcp-schedule-manager
 provider: mcp
-version: 1.3.0
+version: 1.4.0
 runtime_requirements: []
 description: >
   定時推送與提醒管理工具。當使用者要求「每天早上推送新聞」、「每週五下班前提醒我」、
@@ -37,6 +37,7 @@ parameters:
         - 工作日：'weekday 09:00' 表示週一到週五 09:00
         - 完整 cron：'30 8 * * 1-5' 表示平日 08:30
         - 一次性：'once +10m' 表示 10 分鐘後（用於 reminder 或一次性任務）
+        - 間隔循環：'every +10m' 表示每 10 分鐘執行一次（支援任意分鐘數）
     config:
       type: object
       description: "任務設定，依 task_type 填入對應欄位。絕不可填入未定義的欄位。"
@@ -109,6 +110,7 @@ execution_timeout: 10
 2. **資訊拆解**：將主題、數量、深度、格式需求、子主題分別提取到對應欄位。
 3. **類型判定優先**：先匹配專用類型（news > work_summary > language > reminder），都不匹配才用 custom。
 4. **時間基準約束**：所有排程時間預設為本地時間（GMT+8）。當使用者給出絕對時間（如「明天下午3點」）且非循環任務時，若不支援絕對日期格式，必須轉換為等效的相對時間 `once +Xm` 或標準排程格式。嚴禁輸出排程引擎無法識別的格式（如「tomorrow 15:00」、中文時間描述）。
+5. **間隔循環格式**：當使用者說「每 X 分鐘」、「每隔 X 分鐘」，cron 必須用 `every +Xm`（例如 `every +10m`），**嚴禁使用 `*/X` 字串或中文描述作為 cron 值**。
 
 ### # Field Mapping Logic（欄位對齊邏輯）
 
@@ -314,7 +316,30 @@ execution_timeout: 10
 }
 ```
 
-### 範例 4：真正的 custom（非新聞/非工作/非語言）
+### 範例 4：間隔循環（每 X 分鐘）
+使用者：「請設定每 10 分鐘傳給我 10 個義大利文詞彙（不能重複）」
+
+✅ **正確：**
+```json
+{
+  "action": "add",
+  "task_type": "language",
+  "name": "每10分鐘義大利文詞彙學習",
+  "cron": "every +10m",
+  "config": {
+    "language": "義大利文",
+    "count": 10
+  }
+}
+```
+
+❌ **錯誤：**
+```json
+{ "cron": "*/10" }          // 不支援
+{ "cron": "*/10 * * * *" }  // 不支援（LLM 不可自行發明 cron 語法）
+```
+
+### 範例 5：真正的 custom（非新聞/非工作/非語言/非間隔）
 使用者：「每天早上推送一則勵志名言給我」
 
 ✅ **正確（這才是 custom 的正確使用場景）：**

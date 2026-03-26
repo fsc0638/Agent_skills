@@ -21,7 +21,21 @@ def _resolve_project_root() -> Path:
 
 def _parse_cron(cron_str: str) -> dict:
     """Parse cron string into structured dict."""
+    import re as _re
     cron_str = cron_str.strip()
+
+    # Interval: 'every +10m' / 'every 10m' / 'every 10 min'
+    _iv = _re.search(r'every\s*\+?(\d+)\s*(?:m|min)', cron_str)
+    if _iv:
+        return {"interval_minutes": int(_iv.group(1))}
+
+    # Full cron with interval in minute field: '*/10 * * * *'
+    _iparts = cron_str.split()
+    if len(_iparts) == 5 and _iparts[0].startswith("*/"):
+        try:
+            return {"interval_minutes": int(_iparts[0][2:])}
+        except ValueError:
+            pass
 
     # One-time reminder: 'once +10m' or 'once +1h'
     if cron_str.startswith("once"):
