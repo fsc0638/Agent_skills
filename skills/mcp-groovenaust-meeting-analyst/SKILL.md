@@ -1,7 +1,7 @@
 ---
 name: mcp-groovenaust-meeting-analyst
 provider: mcp
-version: 1.0.0
+version: 1.1.0
 description: >
   Groovenaust 專案會議分析。以國際專案管理標準（PMP®/PgMP®/PfMP®）為核心，
   將跨語言（日文、英文、中文）、跨文化、跨技術的日方會議逐字稿，
@@ -82,10 +82,91 @@ risk_level: low
 ### 匯出規則
 
 1. **markdown 匯出**：按照上述欄位結構，以 markdown 表格呈現
-2. **docx 匯出**：使用 `references/meeting_template_*.docx` 作為基底範本，將分析結果填入對應欄位
+2. **docx 匯出**：呼叫 `mcp-python-executor` 產生 .docx 檔案（詳見下方「docx 匯出流程」）
 3. **「討論事項」** 須包含每一議題的決策狀態（✅ 已決 / ⏳ 未決 / ⚠️ 模糊）
 4. **「追蹤事項」** 須包含：行動內容、負責方（我方/日方/雙方）、預期完成時間
 5. 匯出時仍須在文末附上「專案經理觀點（七）」作為附錄
+
+### docx 匯出流程
+
+當 `export_format=docx` 時，在完成 markdown 分析後，必須：
+
+**步驟 1**：先以 markdown 格式完整輸出所有 7 節分析內容
+
+**步驟 2**：呼叫 `mcp-python-executor`，`code` 參數中**直接嵌入**所有分析結果值（字串變數）。範本如下：
+
+```python
+import os
+from datetime import datetime
+from docx import Document
+
+# ── 以下變數由 LLM 根據分析結果填入實際內容 ──
+meeting_title  = "【LLM填入：會議名稱】"
+time_str       = "【LLM填入：會議時間】"
+place          = "【LLM填入：地點，如 Google Meet】"
+writer         = "Agent K（AI 自動產出）"
+participants   = "【LLM填入：出席者清單】"
+noshow         = "【LLM填入：缺席者，無則留空】"
+discussion     = "【LLM填入：討論事項，含決策狀態】"
+todo_list      = "【LLM填入：追蹤事項，含負責方與期限】"
+extempore      = "【LLM填入：臨時動議，無則留空】"
+notice         = "【LLM填入：注意事項】"
+language       = "【LLM填入：繁體中文 或 日文】"
+
+# ── 載入對應語言範本 ──
+skills_home = os.environ.get("SKILLS_HOME", "Agent_skills/skills")
+lang_code = "ja" if language == "日文" else "zh-TW"
+template_path = os.path.join(skills_home,
+    "mcp-groovenaust-meeting-analyst", "references",
+    f"meeting_template_{lang_code}.docx")
+
+replacements = {
+    "{meeting_title}": meeting_title, "{time}": time_str,
+    "{place}": place, "{writer}": writer,
+    "{participants}": participants, "{noshow}": noshow,
+    "{discussion_topics}": discussion, "{todo_list}": todo_list,
+    "{extempore_motion}": extempore, "{notice}": notice,
+}
+
+if os.path.exists(template_path):
+    doc = Document(template_path)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for key, val in replacements.items():
+                    if key in cell.text:
+                        # Replace within runs to preserve formatting
+                        for para in cell.paragraphs:
+                            for run in para.runs:
+                                if key in run.text:
+                                    run.text = run.text.replace(key, val)
+                        # Fallback: replace at cell level
+                        if key in cell.text:
+                            cell.text = cell.text.replace(key, val)
+else:
+    # 範本不存在時建立簡易 docx
+    doc = Document()
+    doc.add_heading(meeting_title, 0)
+    doc.add_paragraph(f"時間：{time_str}　地點：{place}　記錄：{writer}")
+    doc.add_heading("出席者", 1); doc.add_paragraph(participants)
+    doc.add_heading("討論事項", 1); doc.add_paragraph(discussion)
+    doc.add_heading("追蹤事項", 1); doc.add_paragraph(todo_list)
+    doc.add_heading("注意事項", 1); doc.add_paragraph(notice)
+
+# ── 存檔至 downloads ──
+downloads_dir = os.path.join("workspace", "downloads")
+os.makedirs(downloads_dir, exist_ok=True)
+ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+filename = f"meeting_{ts}.docx"
+out_path = os.path.join(downloads_dir, filename)
+doc.save(out_path)
+print(f"OK:{filename}")
+```
+
+**步驟 3**：從 print 輸出取得 `filename`，告知使用者下載連結：
+> `會議紀錄已產出，請點此下載：/downloads/{filename}`
+
+**注意**：`mcp-python-executor` 只有 `code` 一個參數，所有填充資料須以 Python 字串字面值直接嵌入程式碼中，不可使用 `input()` 讀取。
 
 ---
 

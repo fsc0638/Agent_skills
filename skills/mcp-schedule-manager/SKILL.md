@@ -1,13 +1,13 @@
 ---
 name: mcp-schedule-manager
 provider: mcp
-version: 1.4.0
+version: 1.7.0
 runtime_requirements: []
 description: >
   定時推送與提醒管理工具。當使用者要求「每天早上推送新聞」、「每週五下班前提醒我」、
   「定時推送工作摘要」、「幫我設定排程」、「取消推送」等帶有時間排程意圖的指令時，
   必須使用此工具。此工具可新增、列出、刪除、暫停及恢復排程任務。
-  支援類型：news（新聞摘要）、work_summary（工作重點）、language（語言學習）、custom（自訂內容）。
+  支援類型：news（新聞摘要）、work_summary（工作重點）、language（語言學習）、custom（自訂內容）、pipeline（複合多技能任務）。
   注意：一次性提醒（如「10分鐘後提醒我」）也使用此工具，type 設為 reminder。
 parameters:
   type: object
@@ -23,9 +23,9 @@ parameters:
       description: >
         推送內容類型（僅 add 時需要）。
         news=新聞摘要、work_summary=工作項目統整、language=語言詞彙學習、
-        custom=自訂內容、reminder=一次性提醒。
+        custom=自訂內容、reminder=一次性提醒、pipeline=複合多技能任務。
         【極重要】必須根據下方「類型判定規則」正確選擇，不可隨意使用 custom。
-      enum: ["news", "work_summary", "language", "custom", "reminder"]
+      enum: ["news", "work_summary", "language", "custom", "reminder", "pipeline"]
     name:
       type: string
       description: "任務名稱，用於顯示。例如「每日科技新聞」「日文N3學習」"
@@ -70,6 +70,10 @@ parameters:
         message:
           type: string
           description: "[適用 reminder] 提醒內容"
+        output_format:
+          type: string
+          enum: ["text", "pdf", "docx"]
+          description: "[所有類型適用] 指定輸出格式。提到「PDF/下載/檔案」→ pdf；提到「Word/docx」→ docx；其他留空（預設 text）"
       additionalProperties: false
     task_id:
       type: string
@@ -121,11 +125,36 @@ execution_timeout: 10
 | 2 | **work_summary** | 出現「工作摘要/工作統整/週報/工作重點」 | 「推送工作摘要」 |
 | 3 | **language** | 出現「學習/詞彙/單字」且有語種 | 「日文N3詞彙」 |
 | 4 | **reminder** | 純粹提醒，**完全不需要 LLM 生成內容** | 「提醒我開會」「提醒我買牛奶」 |
-| 5 | **custom** | 以上全部不匹配（最後手段） | 「推送勵志名言」「推送笑話」 |
+| 5 | **pipeline** | 跨域複合需求：涉及 2+ 種不同技能且有資料依賴（搜尋→轉換→生成、分析→整理→輸出）| 見下方說明 |
+| 6 | **custom** | 以上全部不匹配（最後手段） | 「推送勵志名言」「推送笑話」 |
 
 ⚠️ **「X分鐘後」是排程時間，不是類型判定依據！**
 - 「2分鐘後統整新聞」→ type=**news**（有「新聞」）, cron="once +2m"
 - 「10分鐘後提醒我開會」→ type=**reminder**（純提醒，語氣請幽默風趣切勿死板）
+
+### 🔀 pipeline 判定規則
+
+**使用 pipeline 的條件**：需求中包含**跨域技能組合**，各步驟之間有資料流依賴關係。
+
+| 判斷問題 | 是 → | 否 → |
+|----------|------|------|
+| 需要 2 種以上不同類別的技能？ | 繼續判斷 | 用對應專用類型 |
+| 各步驟之間有「前一步輸出→下一步輸入」的依賴？ | **pipeline** | custom |
+
+**pipeline 適用範例：**
+- 「搜尋台灣股市新聞 + 翻成日文 + 整理成 PDF」（搜尋→翻譯→生成檔案）
+- 「查詢今天匯率 + 計算我的日幣換算 + 回報結果」（搜尋→計算→輸出）
+- 「抓取天氣預報 + 判斷是否適合出遊 + 給出建議」（搜尋→推理→輸出）
+- 「蒐集競品資訊 + 比較分析 + 製作 DOCX 報告」（搜尋×多次→分析→生成檔案）
+
+**pipeline 不適用範例（改用對應專用類型）：**
+- 「整理新聞做成 PDF」→ **news**（output_format=pdf，news 已內建此能力）
+- 「日文詞彙學習」→ **language**
+- 「提醒我開會」→ **reminder**
+
+**pipeline config 必填欄位：**
+- `original_request`：使用者完整原文（自動填入，不需 LLM 手動設定）
+- `output_format`：若需要檔案輸出，設定 pdf / docx（選填）
 
 ### 🚨 多排程獨立性（嚴禁繼承前一次參數）
 每次呼叫 mcp-schedule-manager **必須從使用者當前訊息重新解析所有欄位**。
@@ -149,11 +178,41 @@ execution_timeout: 10
 
 🚨 **topic 禁止填入**：動作詞（統整/推送/給我）、時間（分鐘後/每天）、格式（PDF）、數量（20則）
 
+**所有類型共用 — output_format 提取規則：**
+| 使用者說 | output_format 值 |
+|---------|-----------------|
+| 「PDF」「下載」「生成PDF」「PDF供下載」 | `"pdf"` |
+| 「Word」「docx」「Word檔」 | `"docx"` |
+| 未提及 | 不填（留空，預設 text） |
+
+⚠️ `output_format` 適用於所有 task_type（news/work_summary/language/custom）。
+   news 類型若設定 output_format=pdf，**同時仍需** 在 extra_instructions 填入「統整成PDF供下載」（雙重觸發保障）。
+
 ### 🚫 絕對禁止
 - **禁止把新聞需求設為 custom 或 reminder** — 只要出現「新聞」，type 必須是 `news`
 - **禁止把所有需求都設為 custom** — custom 是最後手段
 - **禁止 config 為空 `{}`** — 必須拆解到對應欄位
 - **reminder 僅用於零內容生成的純提醒** — 需要 LLM 搜尋/生成 → 絕對不是 reminder
+
+### 🔀 多內容類型請求 → 必須分拆為多次呼叫（Constraint #6）
+當使用者的一句需求同時包含多種 `content_type` 或跨 task_type 內容，**必須分別呼叫 add 多次**：
+- 「每天 8:30 推送 3 個 N1 文法和 10 個 N1 單字」→ **呼叫 2 次**：
+  1. `add(type=language, config={content_type:"grammar", count:3, ...})`
+  2. `add(type=language, config={content_type:"vocabulary", count:10, ...})`
+- 「每天推送新聞和工作摘要」→ **呼叫 2 次**：
+  1. `add(type=news, ...)`
+  2. `add(type=work_summary, ...)`
+- 每次呼叫成功後才進行下一個
+- 確認訊息必須列出**實際建立的每一個** task 名稱，不得用「都設好了」等概括語
+- ⚠️ 嚴禁將多種內容塞進一個 task — 一個 task 只能有一種 content_type
+
+### 🔄 更新排程 → 直接 add，禁止 remove+add（Constraint #7）
+當使用者要修改既有排程的參數（如「改成20則」「換成N2」），**直接呼叫 add**，傳入新參數。
+系統有內建重複偵測：同 cron + 同 type → 自動更新既有 task，不會重複建立。
+
+- ✅ 正確：直接 `add(type=news, cron="08:30", config={count:20, topic:"科技", ...})`
+- ❌ 錯誤：先 `remove(task_id=...)` 再 `add(...)` — 你不一定有 task_id，且刪除會失敗
+- ❌ 錯誤：問使用者「要我先查 task_id 嗎？」— 不需要，直接 add 就會自動更新
 
 ### ⚡ 建立排程後的行為規則
 - 排程建立成功後，你只需要回覆使用者確認訊息（如「已幫你設定2分鐘後的任務」）
@@ -243,6 +302,22 @@ execution_timeout: 10
 | 欄位 | 必填 | 說明 |
 |------|------|------|
 | `message` | ✅ | 提醒內容 |
+
+### 🔀 pipeline — 複合多技能任務
+```json
+{
+  "original_request": "搜尋台灣股市新聞，翻成日文，整理成 PDF 供下載",
+  "output_format": "pdf"
+}
+```
+
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `original_request` | ✅ | 使用者完整原文（系統自動填入，LLM 不需手動設定） |
+| `output_format` | 選填 | 若需要檔案輸出：`pdf` / `docx`（未提及則不填） |
+
+⚠️ pipeline 的 config 只需 `original_request` + `output_format`（選填）。
+   **禁止**把其他 task_type 的欄位（topic/count/prompt 等）塞入 pipeline config。
 
 ---
 
@@ -339,7 +414,30 @@ execution_timeout: 10
 { "cron": "*/10 * * * *" }  // 不支援（LLM 不可自行發明 cron 語法）
 ```
 
-### 範例 5：真正的 custom（非新聞/非工作/非語言/非間隔）
+### 範例 5：複合跨域任務（pipeline）
+使用者：「每天早上8點幫我搜尋台灣股市走勢，翻成日文，做成 PDF 給我下載」
+
+✅ **正確：**
+```json
+{
+  "action": "add",
+  "task_type": "pipeline",
+  "name": "每日股市日文PDF報告",
+  "cron": "08:00",
+  "config": {
+    "output_format": "pdf"
+  }
+}
+```
+（`original_request` 由系統自動填入，不需 LLM 設定）
+
+❌ **錯誤：**
+```json
+{ "task_type": "news" }   // 雖有新聞，但還需翻譯+轉語言 → 跨域依賴 → pipeline
+{ "task_type": "custom", "config": { "prompt": "..." } }  // custom 無法自動規劃多步驟工具鏈
+```
+
+### 範例 6：真正的 custom（非新聞/非工作/非語言/非間隔/非複合）
 使用者：「每天早上推送一則勵志名言給我」
 
 ✅ **正確（這才是 custom 的正確使用場景）：**
@@ -376,13 +474,27 @@ execution_timeout: 10
 - 「以下是即將為您推送的內容…」之類的預覽
 - 「系統正在為您準備…」之類的進度說明
 
-✅ **標準回覆格式（照此輸出，不可偏離）：**
+### ✅ Post-Action 排程清單確認（強制執行）
+每次 **add / remove / pause / resume** 操作完成後，**必須**接著呼叫 `list` 取得最新排程清單，
+然後在確認訊息末尾附上格式化清單：
 
 ```
 ✅ 已為您設定排程：**[任務名稱]**
-系統將會在 **[排程時間/觸發條件]** 自動為您執行。
+系統將會在 **[排程時間]** 自動為您執行。
+
+📋 目前排程（共 N 個）：
+① [task名稱] — [cron時間描述]
+② [task名稱] — [cron時間描述]
+...
 ```
 
-**範例：**
-> ✅ 已為您設定排程：**2分鐘後社會案件新聞統整**
-> 系統將會在 **2 分鐘後（14:57）** 自動為您執行。
+**範例（建立 2 個語言學習 task 後）：**
+> ✅ 已設定 2 個排程任務！
+>
+> 📋 目前排程（共 2 個）：
+> ① 每日N1文法 — 每天 08:30
+> ② 每日N1單字 — 每天 08:30
+>
+> 系統將在指定時間自動推送，有需要調整隨時告訴我！
+
+⚠️ 此清單是從實際 JSON 取得的真實資料，不是 LLM 自行編造。若清單與使用者預期不符，主動說明差異並詢問是否補齊。

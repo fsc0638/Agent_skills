@@ -49,7 +49,7 @@
     {
       "id": "mcp-groovenaust-meeting-analyst",
       "name": "mcp-groovenaust-meeting-analyst",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Groovenaust 專案會議分析。以國際專案管理標準（PMP®/PgMP®/PfMP®）為核心， 將跨語言（日文、英文、中文）、跨文化、跨技術的日方會議逐字稿， 轉化為「可決策、可追蹤、可治理」的專案行動系統。 當使用者提到「Groovenaust」「日方會議」「日本會議分析」「跨國會議紀錄」 「專案會議分析」「GVN會議」「日方逐字稿分析」時觸發此技能。",
       "tags": [
         "mcp",
@@ -390,8 +390,8 @@
     {
       "id": "mcp-schedule-manager",
       "name": "mcp-schedule-manager",
-      "version": "1.3.0",
-      "description": "定時推送與提醒管理工具。當使用者要求「每天早上推送新聞」、「每週五下班前提醒我」、 「定時推送工作摘要」、「幫我設定排程」、「取消推送」等帶有時間排程意圖的指令時， 必須使用此工具。此工具可新增、列出、刪除、暫停及恢復排程任務。 支援類型：news（新聞摘要）、work_summary（工作重點）、language（語言學習）、custom（自訂內容）。 注意：一次性提醒（如「10分鐘後提醒我」）也使用此工具，type 設為 reminder。",
+      "version": "1.7.0",
+      "description": "定時推送與提醒管理工具。當使用者要求「每天早上推送新聞」、「每週五下班前提醒我」、 「定時推送工作摘要」、「幫我設定排程」、「取消推送」等帶有時間排程意圖的指令時， 必須使用此工具。此工具可新增、列出、刪除、暫停及恢復排程任務。 支援類型：news（新聞摘要）、work_summary（工作重點）、language（語言學習）、custom（自訂內容）、pipeline（複合多技能任務）。 注意：一次性提醒（如「10分鐘後提醒我」）也使用此工具，type 設為 reminder。",
       "tags": [
         "mcp",
         "schedule",
@@ -401,6 +401,7 @@
         "summary",
         "language",
         "custom",
+        "pipeline",
         "type",
         "reminder",
         "定時",
@@ -421,8 +422,7 @@
         "時間",
         "意圖",
         "指令",
-        "必須",
-        "新增"
+        "必須"
       ],
       "runtime_requirements": [],
       "estimated_tokens": 50,
@@ -444,13 +444,14 @@
           },
           "task_type": {
             "type": "string",
-            "description": "推送內容類型（僅 add 時需要）。 news=新聞摘要、work_summary=工作項目統整、language=語言詞彙學習、 custom=自訂內容、reminder=一次性提醒。 【極重要】必須根據下方「類型判定規則」正確選擇，不可隨意使用 custom。\n",
+            "description": "推送內容類型（僅 add 時需要）。 news=新聞摘要、work_summary=工作項目統整、language=語言詞彙學習、 custom=自訂內容、reminder=一次性提醒、pipeline=複合多技能任務。 【極重要】必須根據下方「類型判定規則」正確選擇，不可隨意使用 custom。\n",
             "enum": [
               "news",
               "work_summary",
               "language",
               "custom",
-              "reminder"
+              "reminder",
+              "pipeline"
             ]
           },
           "name": {
@@ -459,7 +460,7 @@
           },
           "cron": {
             "type": "string",
-            "description": "排程時間。支援格式： - 簡單時間：'08:30' 表示每天 08:30 - 工作日：'weekday 09:00' 表示週一到週五 09:00 - 完整 cron：'30 8 * * 1-5' 表示平日 08:30 - 一次性：'once +10m' 表示 10 分鐘後（用於 reminder 或一次性任務）\n"
+            "description": "排程時間。支援格式： - 簡單時間：'08:30' 表示每天 08:30 - 工作日：'weekday 09:00' 表示週一到週五 09:00 - 完整 cron：'30 8 * * 1-5' 表示平日 08:30 - 一次性：'once +10m' 表示 10 分鐘後（用於 reminder 或一次性任務） - 間隔循環：'every +10m' 表示每 10 分鐘執行一次（支援任意分鐘數）\n"
           },
           "config": {
             "type": "object",
@@ -505,6 +506,15 @@
               "message": {
                 "type": "string",
                 "description": "[適用 reminder] 提醒內容"
+              },
+              "output_format": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "pdf",
+                  "docx"
+                ],
+                "description": "[所有類型適用] 指定輸出格式。提到「PDF/下載/檔案」→ pdf；提到「Word/docx」→ docx；其他留空（預設 text）"
               }
             },
             "additionalProperties": false

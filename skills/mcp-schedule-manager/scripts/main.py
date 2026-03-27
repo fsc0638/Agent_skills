@@ -173,6 +173,7 @@ def _auto_correct_task_type(task_type: str, task_config: dict, original_request:
                 print(f"[AUTO-INFER] Filled missing news fields: {inferred}", file=sys.stderr)
         return task_type, task_config
 
+    # pipeline 類型保持不變，不進行任何自動修正
     if task_type not in ("custom", "reminder"):
         return task_type, task_config
 
@@ -259,6 +260,16 @@ def main():
     except json.JSONDecodeError:
         task_config = {}
 
+    # ── Helper: build task list summary for post-action response ──
+    def _build_tasks_summary(tasks_list):
+        if not tasks_list:
+            return "📋 目前沒有任何排程。"
+        lines = [f"📋 目前排程（共 {len(tasks_list)} 個）："]
+        for i, t in enumerate(tasks_list, 1):
+            status = "⏸️" if not t.get("enabled", True) else ""
+            lines.append(f"{'①②③④⑤⑥⑦⑧⑨⑩'[i-1] if i <= 10 else f'{i}.'} {t['name']} — {t['cron']} {status}")
+        return "\n".join(lines)
+
     # ── ACTION: add ──
     if action == "add":
         # Always store the user's original request for fallback prompt generation
@@ -267,6 +278,92 @@ def main():
 
         # ── Auto-correct: fix LLM type misclassification before saving ──
         task_type, task_config = _auto_correct_task_type(task_type, task_config, user_original_request)
+
+        # ── Server-side auto-split: detect multiple content types in one request ──
+        # e.g., "3個N1文法和10個N1單字" → create 2 tasks
+        _split_requests = []
+        _orig = user_original_request or task_config.get("original_request", "")
+        if task_type == "language" and _orig:
+            import re as _split_re
+            _has_grammar = any(kw in _orig for kw in ["文法", "語法", "句型", "grammar"])
+            _has_vocab = any(kw in _orig for kw in ["單字", "單詞", "詞彙", "vocabulary"])
+            if _has_grammar and _has_vocab:
+                # Extract counts for each
+                _g_count = 5
+                _v_count = 5
+                _g_m = _split_re.search(r'(\d+)\s*[個條]\s*(?:N\d\s*)?(?:文法|語法|句型)', _orig)
+                if _g_m:
+                    _g_count = int(_g_m.group(1))
+                _v_m = _split_re.search(r'(\d+)\s*[個條]\s*(?:N\d\s*)?(?:單字|單詞|詞彙)', _orig)
+                if _v_m:
+                    _v_count = int(_v_m.group(1))
+                # Extract common fields
+                _lang = task_config.get("language", "日文")
+                _level = task_config.get("level", "")
+                if not _level:
+                    _lm = _split_re.search(r'N([1-5])', _orig)
+                    _level = f"N{_lm.group(1)}" if _lm else "N3"
+                _split_requests = [
+                    {"content_type": "grammar", "count": _g_count, "language": _lang, "level": _level,
+                     "original_request": _orig, "name_suffix": "文法"},
+                    {"content_type": "vocabulary", "count": _v_count, "language": _lang, "level": _level,
+                     "original_request": _orig, "name_suffix": "單字"},
+                ]
+
+        if _split_requests:
+            # Create multiple tasks server-side
+            _created_tasks = []
+            for _sr in _split_requests:
+                _sr_name = f"{_sr['level']}{_sr['language']}{_sr['name_suffix']}推送"
+                _sr_config = {k: v for k, v in _sr.items() if k != "name_suffix"}
+                _sr_parsed = _parse_cron(cron)
+                _sr_task = {
+                    "id": f"task_{uuid.uuid4().hex[:8]}",
+                    "type": "language",
+                    "name": _sr_name,
+                    "cron": cron,
+                    "cron_parsed": _sr_parsed,
+                    "config": _sr_config,
+                    "enabled": True,
+                    "created_at": datetime.now().isoformat(),
+                    "last_run": None,
+                }
+                if _sr_parsed.get("once"):
+                    _sr_task["once"] = True
+
+                # Check dedup for each split task
+                _dup_found = False
+                for _et in cfg["tasks"]:
+                    if (not _et.get("enabled", True) or _et["cron"] != cron
+                            or _et["type"] != "language"):
+                        continue
+                    _ec = _et.get("config", {})
+                    if (_ec.get("language") == _sr_config.get("language")
+                            and _ec.get("content_type") == _sr_config.get("content_type")):
+                        _et["config"].update(_sr_config)
+                        _et["name"] = _sr_name
+                        _created_tasks.append(_et)
+                        _dup_found = True
+                        break
+                if not _dup_found:
+                    cfg["tasks"].append(_sr_task)
+                    _created_tasks.append(_sr_task)
+
+            config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+            _tasks_summary = _build_tasks_summary(cfg["tasks"])
+            print(json.dumps({
+                "status": "success",
+                "action": "add",
+                "tasks_created": _created_tasks,
+                "count": len(_created_tasks),
+                "message": f"已自動拆分為 {len(_created_tasks)} 個排程任務",
+                "tasks_summary": _tasks_summary,
+                "instruction": (
+                    "【重要】排程已建立。回覆使用者時必須包含上方 tasks_summary 的排程清單。"
+                    "絕對不要自己立刻執行任務內容。"
+                ),
+            }, ensure_ascii=False))
+            return
 
         # ── Guard: Validate cron against user's actual request ──────────
         # LLM sometimes carries over cron from previous conversation turn.
@@ -313,6 +410,7 @@ def main():
                 "language": "語言學習",
                 "custom": "自訂推送",
                 "reminder": "提醒",
+                "pipeline": "複合任務",
             }
             name = type_names.get(task_type, "定時推送")
 
@@ -334,19 +432,52 @@ def main():
         if parsed_cron.get("once"):
             task["once"] = True
 
-        cfg["tasks"].append(task)
-        config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+        # ── Duplicate detection: same cron + same type → update existing ──
+        # Loosened: for news/work_summary, same cron+type is enough (topic may be reparsed differently)
+        # For language, also match content_type (grammar vs vocabulary are distinct)
+        _updated_existing = False
+        for _et in cfg["tasks"]:
+            if not _et.get("enabled", True):
+                continue
+            if _et["cron"] != cron or _et["type"] != task_type:
+                continue
+            _ec = _et.get("config", {})
+            _is_dup = False
+            if task_type == "language":
+                _is_dup = (_ec.get("language") == task_config.get("language")
+                           and _ec.get("content_type") == task_config.get("content_type"))
+            elif task_type == "news":
+                _is_dup = True  # same cron + same type = same news schedule
+            elif task_type == "work_summary":
+                _is_dup = True
+            elif task_type in ("custom", "pipeline"):
+                _is_dup = (_ec.get("original_request") == task_config.get("original_request"))
+            elif task_type == "reminder":
+                _is_dup = (_ec.get("message") == task_config.get("message"))
+            if _is_dup:
+                _et["config"].update(task_config)
+                _et["name"] = name
+                config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+                task = _et  # reuse for response
+                _updated_existing = True
+                print(f"[DEDUP] Updated existing task {_et['id']} instead of creating duplicate", file=sys.stderr)
+                break
 
+        if not _updated_existing:
+            cfg["tasks"].append(task)
+            config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        _tasks_summary = _build_tasks_summary(cfg["tasks"])
         print(json.dumps({
             "status": "success",
             "action": "add",
             "task": task,
-            "message": f"排程「{name}」已建立，時間：{cron}",
+            "message": f"排程「{name}」已{'更新' if _updated_existing else '建立'}，時間：{cron}",
+            "tasks_summary": _tasks_summary,
             "instruction": (
                 "【重要】排程已建立，任務將在指定時間由排程系統自動執行。"
-                "你現在只需要回覆使用者確認訊息（如「已幫你設定X分鐘後的任務」），"
+                "你現在只需要回覆使用者確認訊息，並且必須在末尾附上 tasks_summary 中的排程清單。"
                 "絕對不要自己立刻執行任務內容（不要搜尋新聞、不要生成檔案、不要呼叫其他工具）。"
-                "排程系統會在時間到時自動完成所有工作。"
             ),
         }, ensure_ascii=False))
         return
@@ -396,11 +527,14 @@ def main():
         cfg["tasks"] = [t for t in cfg["tasks"] if t["id"] != task_id]
         if len(cfg["tasks"]) < original_len:
             config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+            _tasks_summary = _build_tasks_summary(cfg["tasks"])
             print(json.dumps({
                 "status": "success",
                 "action": "remove",
                 "task_id": task_id,
                 "message": f"已刪除排程 {task_id}",
+                "tasks_summary": _tasks_summary,
+                "instruction": "回覆使用者時必須在末尾附上 tasks_summary 中的排程清單。",
             }, ensure_ascii=False))
         else:
             print(json.dumps({
