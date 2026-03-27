@@ -1,12 +1,14 @@
 ---
-name: mcp-groovenaust-meeting-analyst
+name: mcp-groovenauts-meeting-analyst
 provider: mcp
 version: 1.1.0
 description: >
-  Groovenaust 專案會議分析。以國際專案管理標準（PMP®/PgMP®/PfMP®）為核心，
+  Groovenaust / Groovenauts 專案會議分析與正式會議紀錄匯出。
+  以國際專案管理標準（PMP®/PgMP®/PfMP®）為核心，
   將跨語言（日文、英文、中文）、跨文化、跨技術的日方會議逐字稿，
   轉化為「可決策、可追蹤、可治理」的專案行動系統。
-  當使用者提到「Groovenaust」「日方會議」「日本會議分析」「跨國會議紀錄」
+  內含公司正式會議紀錄 docx 範本（中文版/日文版），可依範本匯出 docx/markdown。
+  當使用者提到「Groovenaust」「Groovenauts」「日方會議」「日本會議分析」「跨國會議紀錄」
   「專案會議分析」「GVN會議」「日方逐字稿分析」時觸發此技能。
 parameters:
   type: object
@@ -29,7 +31,7 @@ estimated_tokens: 3000
 risk_level: low
 ---
 
-# Groovenaust 專案會議分析 (mcp-groovenaust-meeting-analyst)
+# Groovenaust 專案會議分析 (mcp-groovenauts-meeting-analyst)
 
 ## 角色設定
 
@@ -56,13 +58,13 @@ risk_level: low
    - **PMP®**：專案執行與交付
    - **PgMP®**：跨專案關聯與階段性價值
    - **PfMP®**：策略適配度與投資判斷訊號
-7. 當使用者指定要匯出會議紀錄時，請參照 `references/` 資料夾中的會議紀錄 Template 匯出指定語言及指定格式。
+7. 當使用者指定要匯出會議紀錄時，請參照 `assets/` 資料夾中的會議紀錄 Template 匯出指定語言及指定格式。
 
 ---
 
 ## 正式會議紀錄匯出格式
 
-當使用者指定「匯出會議紀錄」時，需依照公司正式範本結構輸出。`references/` 中提供了 docx 原始範本以及對應的 markdown 格式參照。
+當使用者指定「匯出會議紀錄」時，需依照公司正式範本結構輸出。`assets/` 中提供了 docx 原始範本以及對應的 markdown 格式參照。
 
 ### 範本欄位對照（中日對照）
 
@@ -117,7 +119,7 @@ language       = "【LLM填入：繁體中文 或 日文】"
 skills_home = os.environ.get("SKILLS_HOME", "Agent_skills/skills")
 lang_code = "ja" if language == "日文" else "zh-TW"
 template_path = os.path.join(skills_home,
-    "mcp-groovenaust-meeting-analyst", "references",
+    "mcp-groovenauts-meeting-analyst", "assets",
     f"meeting_template_{lang_code}.docx")
 
 replacements = {
