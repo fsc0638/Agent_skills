@@ -91,29 +91,37 @@ risk_level: low
 
 ### docx 匯出流程
 
-當 `export_format=docx` 時，在完成 markdown 分析後，必須：
+當 `export_format=docx` 時，**必須嚴格依照以下兩個步驟執行，不得跳過任何一步**：
 
-**步驟 1**：先以 markdown 格式完整輸出所有 7 節分析內容
+**步驟 1（必須先完成）**：以 markdown 格式完整輸出所有 7 節分析內容，從逐字稿中提取以下資訊：
+- 會議名稱、時間、地點、出席者、缺席者
+- 討論事項（含決策狀態 ✅/⏳/⚠️）
+- 追蹤事項（含負責方與期限）
+- 臨時動議、注意事項
+- 主管姓名（如無則留空）
 
-**步驟 2**：呼叫 `mcp-python-executor`，`code` 參數中**直接嵌入**所有分析結果值（字串變數）。範本如下：
+⚠️ **禁止跳過步驟 1 直接執行步驟 2**。步驟 2 的所有變數值必須來自步驟 1 的分析結果。
+
+**步驟 2**：呼叫 `mcp-python-executor`，`code` 參數中**直接嵌入步驟 1 提取到的實際內容**（字串變數）。範本如下：
 
 ```python
 import os
 from datetime import datetime
 from docx import Document
 
-# ── 以下變數由 LLM 根據分析結果填入實際內容 ──
-meeting_title  = "【LLM填入：會議名稱】"
-time_str       = "【LLM填入：會議時間】"
-place          = "【LLM填入：地點，如 Google Meet】"
+# ── 以下變數由 LLM 根據步驟 1 的分析結果填入實際內容（禁止使用預設佔位符）──
+meeting_title  = "【從步驟1填入實際會議名稱】"
+time_str       = "【從步驟1填入實際時間】"
+place          = "【從步驟1填入實際地點，如 Google Meet】"
 writer         = "Agent K（AI 自動產出）"
-participants   = "【LLM填入：出席者清單】"
-noshow         = "【LLM填入：缺席者，無則留空】"
-discussion     = "【LLM填入：討論事項，含決策狀態】"
-todo_list      = "【LLM填入：追蹤事項，含負責方與期限】"
-extempore      = "【LLM填入：臨時動議，無則留空】"
-notice         = "【LLM填入：注意事項】"
-language       = "【LLM填入：繁體中文 或 日文】"
+manager        = "【從步驟1填入主管姓名，無則留空】"
+participants   = "【從步驟1填入出席者清單】"
+noshow         = "【從步驟1填入缺席者，無則留空】"
+discussion     = "【從步驟1填入討論事項，含決策狀態】"
+todo_list      = "【從步驟1填入追蹤事項，含負責方與期限】"
+extempore      = "【從步驟1填入臨時動議，無則留空】"
+notice         = "【從步驟1填入注意事項】"
+language       = "【繁體中文 或 日文】"
 
 # ── 載入對應語言範本 ──
 skills_home = os.environ.get("SKILLS_HOME", "Agent_skills/skills")
@@ -122,29 +130,46 @@ template_path = os.path.join(skills_home,
     "mcp-groovenauts-meeting-analyst", "assets",
     f"meeting_template_{lang_code}.docx")
 
+# ── 範本佔位符使用 <key> 格式（angle brackets）──
 replacements = {
-    "{meeting_title}": meeting_title, "{time}": time_str,
-    "{place}": place, "{writer}": writer,
-    "{participants}": participants, "{noshow}": noshow,
-    "{discussion_topics}": discussion, "{todo_list}": todo_list,
-    "{extempore_motion}": extempore, "{notice}": notice,
+    "<time>": time_str,
+    "<place>": place,
+    "<writer>": writer,
+    "<participants>": participants,
+    "<noshow>": noshow,
+    "<discussion_topics>": discussion,
+    "<todo_lict>": todo_list,      # 注意：範本拼寫為 todo_lict
+    "<extempore_motion>": extempore,
+    "<notice>": notice,
+    "<manager>": manager,
 }
+
+def replace_in_runs(paragraph, key, val):
+    """Replace key in paragraph runs preserving formatting."""
+    full = "".join(r.text for r in paragraph.runs)
+    if key not in full:
+        return
+    new_full = full.replace(key, val)
+    if paragraph.runs:
+        paragraph.runs[0].text = new_full
+        for r in paragraph.runs[1:]:
+            r.text = ""
 
 if os.path.exists(template_path):
     doc = Document(template_path)
+    # Replace in table cells
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
                 for key, val in replacements.items():
                     if key in cell.text:
-                        # Replace within runs to preserve formatting
                         for para in cell.paragraphs:
-                            for run in para.runs:
-                                if key in run.text:
-                                    run.text = run.text.replace(key, val)
-                        # Fallback: replace at cell level
-                        if key in cell.text:
-                            cell.text = cell.text.replace(key, val)
+                            replace_in_runs(para, key, val)
+    # Replace in paragraphs (e.g. <manager> at bottom)
+    for para in doc.paragraphs:
+        for key, val in replacements.items():
+            if key in para.text:
+                replace_in_runs(para, key, val)
 else:
     # 範本不存在時建立簡易 docx
     doc = Document()
@@ -156,7 +181,7 @@ else:
     doc.add_heading("注意事項", 1); doc.add_paragraph(notice)
 
 # ── 存檔至 downloads ──
-downloads_dir = os.path.join("workspace", "downloads")
+downloads_dir = os.path.join(os.getcwd(), "workspace", "downloads")
 os.makedirs(downloads_dir, exist_ok=True)
 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 filename = f"meeting_{ts}.docx"
