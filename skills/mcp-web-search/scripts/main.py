@@ -50,7 +50,24 @@ def main():
 
     try:
         response = requests.post(url, json=payload, timeout=30)
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except Exception:
+            # Return Tavily error body for debugging (never echo api_key)
+            try:
+                err_text = response.text
+            except Exception:
+                err_text = ""
+            safe_payload = {k: v for k, v in payload.items() if k != "api_key"}
+            print(json.dumps({
+                "status": "error",
+                "message": f"API 執行失敗: {response.status_code} {response.reason}",
+                "url": url,
+                "sent_payload": safe_payload,
+                "tavily_body": (err_text or "")[:2000],
+            }, ensure_ascii=False))
+            return
+
         data = response.json()
         
         # 處理 Extract 模式 (target_url)
