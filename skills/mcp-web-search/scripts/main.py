@@ -25,10 +25,30 @@ def main():
 
     # 3. 執行搜尋或擷取
     url = "https://api.tavily.com/extract" if target_url else "https://api.tavily.com/search"
-    
-    payload = {
-        "api_key": api_key,
-    }
+
+    payload = {"api_key": api_key}
+
+    # ---- Tavily search payload ----
+    if not target_url:
+        q = (query or "").strip()
+        if not q:
+            print(json.dumps({"status": "error", "message": "Missing query."}, ensure_ascii=False))
+            return
+
+        # Tavily expects query + max_results (not limit)
+        payload.update({
+            "query": q,
+            "max_results": int(limit or 5),
+            "include_answer": False,
+            "include_raw_content": False,
+        })
+    else:
+        # ---- Tavily extract payload ----
+        # Tavily extract commonly expects a list of urls
+        payload.update({
+            "urls": [target_url],
+            "include_raw_content": True,
+        })
 
     if target_url:
         payload["urls"] = [target_url]
