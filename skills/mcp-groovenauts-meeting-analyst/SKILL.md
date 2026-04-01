@@ -7,7 +7,7 @@ description: >
   以國際專案管理標準（PMP®/PgMP®/PfMP®）為核心，
   將跨語言（日文、英文、中文）、跨文化、跨技術的日方會議逐字稿，
   轉化為「可決策、可追蹤、可治理」的專案行動系統。
-  內含公司正式會議紀錄 docx 範本（中文版/日文版），可依範本匯出 docx/markdown。
+  內含公司正式會議紀錄 docx 範本（中文版/日文版），可依範本匯出 docx/pdf/markdown。
   當使用者提到「Groovenaust」「Groovenauts」「日方會議」「日本會議分析」「跨國會議紀錄」
   「專案會議分析」「GVN會議」「日方逐字稿分析」時觸發此技能。
 parameters:
@@ -22,8 +22,8 @@ parameters:
       default: "繁體中文"
     export_format:
       type: string
-      description: "選填。匯出格式，可指定 markdown / docx / notion。未指定時以 markdown 格式直接回覆"
-      enum: [markdown, docx, notion]
+      description: "選填。匯出格式，可指定 markdown / docx / pdf / notion。未指定時以 markdown 格式直接回覆"
+      enum: [markdown, docx, pdf, notion]
       default: "markdown"
   required: [transcript]
 runtime_requirements: []
@@ -181,19 +181,71 @@ else:
     doc.add_heading("注意事項", 1); doc.add_paragraph(notice)
 
 # ── 存檔至 downloads ──
-downloads_dir = os.path.join(os.getcwd(), "workspace", "downloads")
+_ws = os.environ.get("WORKSPACE_DIR") or os.path.join(os.getcwd(), "workspace")
+downloads_dir = os.path.join(_ws, "downloads")
 os.makedirs(downloads_dir, exist_ok=True)
 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 filename = f"meeting_{ts}.docx"
 out_path = os.path.join(downloads_dir, filename)
 doc.save(out_path)
-print(f"OK:{filename}")
+base_url = os.environ.get("BASE_URL", "").rstrip("/")
+print(f"DOWNLOAD:{base_url}/downloads/{filename}")
 ```
 
-**步驟 3**：從 print 輸出取得 `filename`，告知使用者下載連結：
-> `會議紀錄已產出，請點此下載：/downloads/{filename}`
+**步驟 3**：直接將 python-executor 的 print 輸出（完整 URL）複製給使用者，**不得自行構造或修改 URL**：
+> 若輸出為 `DOWNLOAD:https://xxx/downloads/meeting_20260401_170007.docx`，則直接告知使用者：
+> `會議紀錄已產出，請點此下載：https://xxx/downloads/meeting_20260401_170007.docx`
 
 **注意**：`mcp-python-executor` 只有 `code` 一個參數，所有填充資料須以 Python 字串字面值直接嵌入程式碼中，不可使用 `input()` 讀取。
+
+### pdf 匯出流程
+
+當 `export_format=pdf` 或使用者明確要求 PDF 時，**同樣需先完成步驟 1**（markdown 分析），再呼叫 `mcp-python-executor` 產生 PDF：
+
+```python
+import sys, os
+from datetime import datetime
+
+_ws = os.environ.get("WORKSPACE_DIR") or os.path.join(os.getcwd(), "workspace")
+sys.path.insert(0, _ws)
+from pdf_helper import ChinesePDF
+
+# ── 以下變數由 LLM 根據步驟 1 的分析結果填入（禁止使用佔位符）──
+meeting_title  = "【從步驟1填入實際會議名稱】"
+time_str       = "【從步驟1填入實際時間】"
+place          = "【從步驟1填入實際地點】"
+language       = "【繁體中文 或 日文】"
+participants   = "【從步驟1填入出席者清單】"
+discussion     = "【從步驟1填入討論事項，含決策狀態】"
+todo_list      = "【從步驟1填入追蹤事項，含負責方與期限】"
+notice         = "【從步驟1填入注意事項】"
+
+DOWNLOADS = os.path.join(_ws, "downloads")
+os.makedirs(DOWNLOADS, exist_ok=True)
+
+pdf = ChinesePDF()
+pdf.add_page()
+pdf.chapter_title(meeting_title)
+pdf.chapter_subtitle(f"日時：{time_str}　場所：{place}")
+pdf.chapter_subtitle("出席者 / 出席者")
+pdf.chapter_body(participants)
+pdf.chapter_subtitle("討論事項 / 協議内容")
+pdf.chapter_body(discussion)
+pdf.chapter_subtitle("追蹤事項 / フォローアップ事項")
+pdf.chapter_body(todo_list)
+if notice:
+    pdf.chapter_subtitle("注意事項 / 連絡事項")
+    pdf.chapter_body(notice)
+
+ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+filename = f"meeting_{ts}.pdf"
+pdf.output(os.path.join(DOWNLOADS, filename))
+
+base_url = os.environ.get("BASE_URL", "").rstrip("/")
+print(f"DOWNLOAD:{base_url}/downloads/{filename}")
+```
+
+**步驟 3**：同 docx 流程，直接複製 print 輸出的完整 URL 給使用者，不得自行修改或構造 URL。
 
 ---
 
