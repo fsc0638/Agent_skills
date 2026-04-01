@@ -28,36 +28,22 @@ def main():
 
     payload = {"api_key": api_key}
 
-    # ---- Tavily search payload ----
-    if not target_url:
+    if target_url:
+        payload.update({
+            "urls": [target_url],
+            "include_raw_content": True,
+        })
+    else:
         q = (query or "").strip()
         if not q:
             print(json.dumps({"status": "error", "message": "Missing query."}, ensure_ascii=False))
             return
 
-        # Tavily expects query + max_results (not limit)
         payload.update({
             "query": q,
-            "max_results": int(limit or 5),
-            "include_answer": False,
-            "include_raw_content": False,
-        })
-    else:
-        # ---- Tavily extract payload ----
-        # Tavily extract commonly expects a list of urls
-        payload.update({
-            "urls": [target_url],
-            "include_raw_content": True,
-        })
-
-    if target_url:
-        payload["urls"] = [target_url]
-    else:
-        payload.update({
-            "query": query,
             "search_depth": search_depth,
-            "max_results": max_results,
-            "include_raw_content": True if search_depth == "advanced" else False
+            "max_results": max_results,  # 用你一開始解析好的 max_results
+            "include_raw_content": True if search_depth == "advanced" else False,
         })
         if include_domains:
             payload["include_domains"] = include_domains
