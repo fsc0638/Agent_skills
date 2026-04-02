@@ -3,13 +3,12 @@ name: mcp-groovenauts-meeting-analyst
 provider: mcp
 version: 1.1.0
 description: >
-  Groovenaust / Groovenauts 專案會議分析與正式會議紀錄匯出。
+  Groovenauts 專案會議分析與正式會議紀錄匯出。
   以國際專案管理標準（PMP®/PgMP®/PfMP®）為核心，
   將跨語言（日文、英文、中文）、跨文化、跨技術的日方會議逐字稿，
   轉化為「可決策、可追蹤、可治理」的專案行動系統。
   內含公司正式會議紀錄 docx 範本（中文版/日文版），可依範本匯出 docx/pdf/markdown。
-  當使用者提到「Groovenaust」「Groovenauts」「日方會議」「日本會議分析」「跨國會議紀錄」
-  「專案會議分析」「GVN會議」「日方逐字稿分析」時觸發此技能。
+  當使用者提到「Groovenauts會議記錄」「日方會議」「日本會議分析」「跨國會議紀錄」「GVN會議」「日方逐字稿分析」時觸發此技能。
 parameters:
   type: object
   properties:
@@ -18,20 +17,20 @@ parameters:
       description: "會議逐字稿內容（可包含日文、英文、中文混合）"
     language:
       type: string
-      description: "輸出語言，預設繁體中文"
+      description: "輸出語言，依照使用者指定的語言輸出分析結果。若未指定，預設為繁體中文。注意：中文內容會轉譯為日文意圖摘要供日方理解，但整體分析輸出仍以此參數指定的語言為主。"
       default: "繁體中文"
     export_format:
       type: string
-      description: "選填。匯出格式，可指定 markdown / docx / pdf / notion。未指定時以 markdown 格式直接回覆"
+      description: "選填。匯出格式，可指定 markdown / docx / pdf / notion。未指定時以 docx 格式直接回覆"
       enum: [markdown, docx, pdf, notion]
-      default: "markdown"
+      default: "docx"
   required: [transcript]
-runtime_requirements: []
-estimated_tokens: 3000
+runtime_requirements: [docx2pdf]
+estimated_tokens: 12000
 risk_level: low
 ---
 
-# Groovenaust 專案會議分析 (mcp-groovenauts-meeting-analyst)
+# Groovenauts 專案會議分析 (mcp-groovenauts-meeting-analyst)
 
 ## 角色設定
 
@@ -59,12 +58,14 @@ risk_level: low
    - **PgMP®**：跨專案關聯與階段性價值
    - **PfMP®**：策略適配度與投資判斷訊號
 7. 當使用者指定要匯出會議紀錄時，請參照 `assets/` 資料夾中的會議紀錄 Template 匯出指定語言及指定格式。
+8.  `assets/` 資料夾中的會議紀錄 Template 說明(Kway x Groovenauts Project Meeting Minutes(jp).docx 為日文範本，Kway x Groovenauts Project Meeting Minutes(zh-TW).docx 為中文範本)必須嚴格遵守其結構與欄位定義，且填充內容必須基於分析結果提取的實際資訊，不得使用預設佔位符或自行構造內容。
+9. **禁止跳過分析直接匯出**。匯出內容必須基於分析結果填充，且不得使用預設佔位符，必須嵌入實際分析提取的內容。
 
 ---
 
 ## 正式會議紀錄匯出格式
 
-當使用者指定「匯出會議紀錄」時，需依照公司正式範本結構輸出。`assets/` 中提供了 docx 原始範本以及對應的 markdown 格式參照。
+當使用者指定「匯出會議紀錄」時，需依照公司正式範本結構輸出。`assets/` 中提供了 docx 原始範本。
 
 ### 範本欄位對照（中日對照）
 
@@ -83,22 +84,23 @@ risk_level: low
 
 ### 匯出規則
 
-1. **markdown 匯出**：按照上述欄位結構，以 markdown 表格呈現
-2. **docx 匯出**：呼叫 `mcp-python-executor` 產生 .docx 檔案（詳見下方「docx 匯出流程」）
-3. **「討論事項」** 須包含每一議題的決策狀態（✅ 已決 / ⏳ 未決 / ⚠️ 模糊）
-4. **「追蹤事項」** 須包含：行動內容、負責方（我方/日方/雙方）、預期完成時間
-5. 匯出時仍須在文末附上「專案經理觀點（七）」作為附錄
+1. 若未指定依照模板匯出會議紀錄，以**markdown 匯出**：按照上述欄位結構，以 markdown 表格呈現
+2. **docx 匯出**：呼叫 `mcp-python-executor` 產生 .docx 檔案（詳見下方「docx 匯出流程」），日文檔案名稱格式為 `Kway x Groovenauts Project Meeting Minutes(jp)_YYYYMMDD.docx`，中文檔案名稱格式為 `Kway x Groovenauts Project Meeting Minutes(zh-TW)_YYYYMMDD.docx`，並直接提供下載 URL 給使用者
+3. **pdf 匯出**：同樣呼叫 `mcp-python-executor` 產生 .pdf 檔案，流程為先產生 docx 再轉換為 pdf（詳見下方「pdf 匯出流程」），日文檔案名稱格式為 `Kway x Groovenauts Project Meeting Minutes(jp)_YYYYMMDD.pdf`，中文檔案名稱格式為 `Kway x Groovenauts Project Meeting Minutes(zh-TW)_YYYYMMDD.pdf`，並直接提供下載 URL 給使用者
+4. **「討論事項」** 須包含每一議題的決策狀態（✅ 已決 / ⏳ 未決 / ⚠️ 模糊）
+5. **「追蹤事項」** 須包含：行動內容、負責方（我方/日方/雙方）、預期完成時間
+6. 匯出時仍須在文末附上「專案經理觀點（七）」作為附錄
 
 ### docx 匯出流程
 
 當 `export_format=docx` 時，**必須嚴格依照以下兩個步驟執行，不得跳過任何一步**：
 
-**步驟 1（必須先完成）**：以 markdown 格式完整輸出所有 7 節分析內容，從逐字稿中提取以下資訊：
+**步驟 1（必須先完成）**：以 markdown 格式詳細輸出所有 7 節分析內容，從逐字稿中提取以下資訊：
 - 會議名稱、時間、地點、出席者、缺席者
 - 討論事項（含決策狀態 ✅/⏳/⚠️）
 - 追蹤事項（含負責方與期限）
 - 臨時動議、注意事項
-- 主管姓名（如無則留空）
+- 主管姓名（預設：趙嘉浩）
 
 ⚠️ **禁止跳過步驟 1 直接執行步驟 2**。步驟 2 的所有變數值必須來自步驟 1 的分析結果。
 
@@ -114,7 +116,7 @@ meeting_title  = "【從步驟1填入實際會議名稱】"
 time_str       = "【從步驟1填入實際時間】"
 place          = "【從步驟1填入實際地點，如 Google Meet】"
 writer         = "Agent K（AI 自動產出）"
-manager        = "【從步驟1填入主管姓名，無則留空】"
+manager        = "趙嘉浩（預設，無主管可留空）"
 participants   = "【從步驟1填入出席者清單】"
 noshow         = "【從步驟1填入缺席者，無則留空】"
 discussion     = "【從步驟1填入討論事項，含決策狀態】"
@@ -125,10 +127,10 @@ language       = "【繁體中文 或 日文】"
 
 # ── 載入對應語言範本 ──
 skills_home = os.environ.get("SKILLS_HOME", "Agent_skills/skills")
-lang_code = "ja" if language == "日文" else "zh-TW"
+lang_suffix = "jp" if language == "日文" else "zh-tw"
 template_path = os.path.join(skills_home,
     "mcp-groovenauts-meeting-analyst", "assets",
-    f"meeting_template_{lang_code}.docx")
+    f"Kway x Groovenauts Project Meeting Minutes({lang_suffix}).docx")
 
 # ── 範本佔位符使用 <key> 格式（angle brackets）──
 replacements = {
@@ -157,7 +159,26 @@ def replace_in_runs(paragraph, key, val):
 
 if os.path.exists(template_path):
     doc = Document(template_path)
-    # Replace in table cells
+    # Replace meeting title in Table 1 Row 0 (Table 0 is the document header, Table 1 has the data)
+    if len(doc.tables) >= 2:
+        title_cells = doc.tables[1].rows[0].cells
+        # Deduplicate merged cells by id, then fill content cell (index 1)
+        unique = []
+        seen_ids = set()
+        for cell in title_cells:
+            if id(cell) not in seen_ids:
+                seen_ids.add(id(cell))
+                unique.append(cell)
+        if len(unique) >= 2:
+            cell = unique[1]  # second unique cell = content area
+            for para in cell.paragraphs:
+                if para.runs:
+                    para.runs[0].text = meeting_title
+                    for r in para.runs[1:]:
+                        r.text = ""
+                else:
+                    para.text = meeting_title
+    # Replace <key> placeholders in all table cells
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
@@ -200,46 +221,124 @@ print(f"DOWNLOAD:{base_url}/downloads/{filename}")
 
 ### pdf 匯出流程
 
-當 `export_format=pdf` 或使用者明確要求 PDF 時，**同樣需先完成步驟 1**（markdown 分析），再呼叫 `mcp-python-executor` 產生 PDF：
+當 `export_format=pdf` 或使用者明確要求 PDF 時，**同樣需先完成步驟 1**（markdown 分析），再呼叫 `mcp-python-executor` 產生 PDF。
+
+⚠️ **PDF 匯出必須基於 docx 範本轉換，不得使用 ChinesePDF 從零建立。** 流程為：載入 docx 範本 → 填入佔位符 → 儲存暫存 docx → 用 docx2pdf 轉換為 PDF。
 
 ```python
-import sys, os
+import os
 from datetime import datetime
+from docx import Document
+from docx2pdf import convert
 
-_ws = os.environ.get("WORKSPACE_DIR") or os.path.join(os.getcwd(), "workspace")
-sys.path.insert(0, _ws)
-from pdf_helper import ChinesePDF
-
-# ── 以下變數由 LLM 根據步驟 1 的分析結果填入（禁止使用佔位符）──
+# ── 以下變數由 LLM 根據步驟 1 的分析結果填入實際內容（禁止使用預設佔位符）──
 meeting_title  = "【從步驟1填入實際會議名稱】"
 time_str       = "【從步驟1填入實際時間】"
-place          = "【從步驟1填入實際地點】"
-language       = "【繁體中文 或 日文】"
+place          = "【從步驟1填入實際地點，如 Google Meet】"
+writer         = "Agent K（AI 自動產出）"
+manager        = "趙嘉浩（預設，無主管可留空）"
 participants   = "【從步驟1填入出席者清單】"
+noshow         = "【從步驟1填入缺席者，無則留空】"
 discussion     = "【從步驟1填入討論事項，含決策狀態】"
 todo_list      = "【從步驟1填入追蹤事項，含負責方與期限】"
+extempore      = "【從步驟1填入臨時動議，無則留空】"
 notice         = "【從步驟1填入注意事項】"
+language       = "【繁體中文 或 日文】"
 
-DOWNLOADS = os.path.join(_ws, "downloads")
-os.makedirs(DOWNLOADS, exist_ok=True)
+# ── 載入對應語言範本（與 docx 流程完全一致）──
+skills_home = os.environ.get("SKILLS_HOME", "Agent_skills/skills")
+lang_suffix = "jp" if language == "日文" else "zh-tw"
+template_path = os.path.join(skills_home,
+    "mcp-groovenauts-meeting-analyst", "assets",
+    f"Kway x Groovenauts Project Meeting Minutes({lang_suffix}).docx")
 
-pdf = ChinesePDF()
-pdf.add_page()
-pdf.chapter_title(meeting_title)
-pdf.chapter_subtitle(f"日時：{time_str}　場所：{place}")
-pdf.chapter_subtitle("出席者 / 出席者")
-pdf.chapter_body(participants)
-pdf.chapter_subtitle("討論事項 / 協議内容")
-pdf.chapter_body(discussion)
-pdf.chapter_subtitle("追蹤事項 / フォローアップ事項")
-pdf.chapter_body(todo_list)
-if notice:
-    pdf.chapter_subtitle("注意事項 / 連絡事項")
-    pdf.chapter_body(notice)
+# ── 範本佔位符使用 <key> 格式（angle brackets）──
+replacements = {
+    "<time>": time_str,
+    "<place>": place,
+    "<writer>": writer,
+    "<participants>": participants,
+    "<noshow>": noshow,
+    "<discussion_topics>": discussion,
+    "<todo_lict>": todo_list,      # 注意：範本拼寫為 todo_lict
+    "<extempore_motion>": extempore,
+    "<notice>": notice,
+    "<manager>": manager,
+}
 
+def replace_in_runs(paragraph, key, val):
+    """Replace key in paragraph runs preserving formatting."""
+    full = "".join(r.text for r in paragraph.runs)
+    if key not in full:
+        return
+    new_full = full.replace(key, val)
+    if paragraph.runs:
+        paragraph.runs[0].text = new_full
+        for r in paragraph.runs[1:]:
+            r.text = ""
+
+if os.path.exists(template_path):
+    doc = Document(template_path)
+    # Replace meeting title in Table 1 Row 0 (Table 0 is header, Table 1 has data)
+    if len(doc.tables) >= 2:
+        title_cells = doc.tables[1].rows[0].cells
+        unique = []
+        seen_ids = set()
+        for cell in title_cells:
+            if id(cell) not in seen_ids:
+                seen_ids.add(id(cell))
+                unique.append(cell)
+        if len(unique) >= 2:
+            cell = unique[1]
+            for para in cell.paragraphs:
+                if para.runs:
+                    para.runs[0].text = meeting_title
+                    for r in para.runs[1:]:
+                        r.text = ""
+                else:
+                    para.text = meeting_title
+    # Replace <key> placeholders in all table cells
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for key, val in replacements.items():
+                    if key in cell.text:
+                        for para in cell.paragraphs:
+                            replace_in_runs(para, key, val)
+    # Replace in paragraphs (e.g. <manager> at bottom)
+    for para in doc.paragraphs:
+        for key, val in replacements.items():
+            if key in para.text:
+                replace_in_runs(para, key, val)
+else:
+    # 範本不存在時建立簡易 docx
+    doc = Document()
+    doc.add_heading(meeting_title, 0)
+    doc.add_paragraph(f"時間：{time_str}　地點：{place}　記錄：{writer}")
+    doc.add_heading("出席者", 1); doc.add_paragraph(participants)
+    doc.add_heading("討論事項", 1); doc.add_paragraph(discussion)
+    doc.add_heading("追蹤事項", 1); doc.add_paragraph(todo_list)
+    doc.add_heading("注意事項", 1); doc.add_paragraph(notice)
+
+# ── 存檔至 downloads ──
+_ws = os.environ.get("WORKSPACE_DIR") or os.path.join(os.getcwd(), "workspace")
+downloads_dir = os.path.join(_ws, "downloads")
+os.makedirs(downloads_dir, exist_ok=True)
 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+# 先存暫存 docx，再轉 PDF
+tmp_docx = os.path.join(downloads_dir, f"_tmp_meeting_{ts}.docx")
+doc.save(tmp_docx)
+
 filename = f"meeting_{ts}.pdf"
-pdf.output(os.path.join(DOWNLOADS, filename))
+out_pdf = os.path.join(downloads_dir, filename)
+convert(tmp_docx, out_pdf)
+
+# 清理暫存 docx
+try:
+    os.remove(tmp_docx)
+except Exception:
+    pass
 
 base_url = os.environ.get("BASE_URL", "").rstrip("/")
 print(f"DOWNLOAD:{base_url}/downloads/{filename}")
@@ -260,6 +359,7 @@ print(f"DOWNLOAD:{base_url}/downloads/{filename}")
 ### 2. 重點議題整理
 
 - 僅保留與**決策、技術、商業模式、時程、責任、風險**相關內容
+- 重點整理請**具體且詳盡**
 - 標示每一議題的「決策狀態」：
 
 | 狀態 | 說明 |
