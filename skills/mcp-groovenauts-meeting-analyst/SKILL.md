@@ -61,6 +61,16 @@ risk_level: low
 8.  `assets/` 資料夾中的會議紀錄 Template 說明(Kway x Groovenauts Project Meeting Minutes(jp).docx 為日文範本，Kway x Groovenauts Project Meeting Minutes(zh-TW).docx 為中文範本)必須嚴格遵守其結構與欄位定義，且填充內容必須基於分析結果提取的實際資訊，不得使用預設佔位符或自行構造內容。
 9. **禁止跳過分析直接匯出**。匯出內容必須基於分析結果填充，且不得使用預設佔位符，必須嵌入實際分析提取的內容。
 
+### ⚠️ 分析深度要求（極重要）
+
+分析輸出必須**具體、詳盡、有深度**，嚴禁泛泛而談或過度簡化。具體要求：
+
+- **討論事項**：每一議題需包含 (a) 議題背景脈絡 (b) 各方立場與觀點 (c) 具體討論結論或分歧點 (d) 決策狀態，不可只寫一句話帶過
+- **追蹤事項**：需詳細描述行動內容的具體步驟，而非僅列出大方向標題。例如「準備合規文件」不合格，應寫「整理跨境資料傳輸合規要求文件，包含 GDPR/個資法對照表，送交日方法務審查」
+- **專案經理觀點**：需引用會議中具體發言或討論內容來支持分析判斷，不得空泛評論
+- **中文意圖轉譯**：需保留原始發言的商業意圖與策略考量，不可過度簡化為一句話摘要
+- 匯出到 docx/pdf 的「討論事項」和「追蹤事項」欄位，同樣需要保持具體詳盡，不可因為格式限制而縮減內容
+
 ---
 
 ## 正式會議紀錄匯出格式
@@ -205,8 +215,9 @@ else:
 _ws = os.environ.get("WORKSPACE_DIR") or os.path.join(os.getcwd(), "workspace")
 downloads_dir = os.path.join(_ws, "downloads")
 os.makedirs(downloads_dir, exist_ok=True)
-ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-filename = f"Kway_x_Groovenauts_Project_Meeting_Minutes_{ts}.docx"
+date_str = datetime.now().strftime("%Y%m%d")
+lang_tag = "jp" if language == "日文" else "zh-TW"
+filename = f"Kway x Groovenauts Project Meeting Minutes({lang_tag})_{date_str}.docx"
 out_path = os.path.join(downloads_dir, filename)
 doc.save(out_path)
 base_url = os.environ.get("BASE_URL", "").rstrip("/")
@@ -324,13 +335,14 @@ else:
 _ws = os.environ.get("WORKSPACE_DIR") or os.path.join(os.getcwd(), "workspace")
 downloads_dir = os.path.join(_ws, "downloads")
 os.makedirs(downloads_dir, exist_ok=True)
-ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+date_str = datetime.now().strftime("%Y%m%d")
+lang_tag = "jp" if language == "日文" else "zh-TW"
 
 # 先存暫存 docx，再轉 PDF
-tmp_docx = os.path.join(downloads_dir, f"_tmp_meeting_{ts}.docx")
+tmp_docx = os.path.join(downloads_dir, f"_tmp_meeting_{date_str}.docx")
 doc.save(tmp_docx)
 
-filename = f"Kway_x_Groovenauts_Project_Meeting_Minutes_{ts}.pdf"
+filename = f"Kway x Groovenauts Project Meeting Minutes({lang_tag})_{date_str}.pdf"
 out_pdf = os.path.join(downloads_dir, filename)
 convert(tmp_docx, out_pdf)
 
