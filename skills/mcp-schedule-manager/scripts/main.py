@@ -113,6 +113,31 @@ _STOPWORDS = {
 }
 
 
+def _parse_task_index(task_id_str: str) -> int | None:
+    """Parse index from user-friendly references like '1', '#2', '第3項', '③'."""
+    import re
+    if not task_id_str:
+        return None
+    s = task_id_str.strip()
+    # Circled numbers ①②③...
+    _CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"
+    if len(s) == 1 and s in _CIRCLED:
+        return _CIRCLED.index(s) + 1
+    # "第X項" / "第X個" with Chinese or Arabic digits
+    _CN = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+    m = re.search(r'第([一二三四五六七八九十\d]+)[項個]?', s)
+    if m:
+        v = m.group(1)
+        if v.isdigit():
+            return int(v)
+        return _CN.get(v)
+    # Plain digit or #digit
+    m = re.match(r'#?(\d+)$', s)
+    if m:
+        return int(m.group(1))
+    return None
+
+
 def _extract_topic(text: str) -> str:
     """Extract topic keywords from text (AutoScan-inspired)."""
     import re
@@ -169,7 +194,6 @@ def _auto_correct_task_type(task_type: str, task_config: dict, original_request:
                     if extra:
                         inferred["extra_instructions"] = "，".join(extra)
                 task_config = {**task_config, **inferred}
-                import sys
                 print(f"[AUTO-INFER] Filled missing news fields: {inferred}", file=sys.stderr)
         return task_type, task_config
 
@@ -226,7 +250,7 @@ def main():
     name = os.getenv("SKILL_PARAM_NAME", "")
     cron = os.getenv("SKILL_PARAM_CRON", "08:00")
     config_str = os.getenv("SKILL_PARAM_CONFIG", "{}")
-    task_id = os.getenv("SKILL_PARAM_TASK_ID", "")
+    task_id = os.getenv("SKILL_PARAM_TASK_ID", "") or os.getenv("SKILL_PARAM_ID", "")
 
     # Session info from environment (injected by adapter)
     session_id = os.getenv("SESSION_ID", "")
@@ -366,31 +390,74 @@ def main():
             return
 
         # ── Guard: Validate cron against user's actual request ──────────
-        # LLM sometimes carries over cron from previous conversation turn.
-        # If user_original_request explicitly says "X分鐘後" but cron doesn't match, fix it.
-        if user_original_request and cron.startswith("once"):
+        # LLM sometimes carries over cron from previous conversation turn,
+        # or sends interval (*/5, every +5m) when user meant one-time ("5分鐘後").
+        if user_original_request:
             import re as _re
-            _time_m = _re.search(r'(\d+)\s*分鐘[後后]?', user_original_request)
-            if _time_m:
-                _req_min = int(_time_m.group(1))
-                _cron_m = _re.search(r'\+(\d+)\s*m', cron)
-                _cron_min = int(_cron_m.group(1)) if _cron_m else None
-                if _cron_min is not None and _cron_min != _req_min:
+
+            # Chinese numeral → Arabic conversion for time parsing
+            _CN_NUM = {"一": 1, "二": 2, "兩": 2, "三": 3, "四": 4, "五": 5,
+                       "六": 6, "七": 7, "八": 8, "九": 9, "十": 10,
+                       "十一": 11, "十二": 12, "十三": 13, "十四": 14, "十五": 15,
+                       "二十": 20, "三十": 30, "半": 30}
+
+            def _parse_cn_or_digit(text, unit_pattern):
+                """Extract number before a unit (分鐘/小時), supporting both 五分鐘 and 5分鐘."""
+                # Try Arabic digit first
+                m = _re.search(r'(\d+)\s*' + unit_pattern, text)
+                if m:
+                    return int(m.group(1))
+                # Try Chinese numeral (1-2 chars before the unit)
+                m = _re.search(r'([一二兩三四五六七八九十半]{1,2})\s*' + unit_pattern, text)
+                if m:
+                    cn = m.group(1)
+                    return _CN_NUM.get(cn, None)
+                return None
+
+            _req_min = _parse_cn_or_digit(user_original_request, r'分鐘[後后]')
+            _req_hr = _parse_cn_or_digit(user_original_request, r'小時[後后]')
+            # Also parse Chinese count (五則 → 5)
+            _req_count = _parse_cn_or_digit(user_original_request, r'[則條篇筆個]')
+
+            # Detect one-time intent: "X分鐘後" / "X小時後" WITHOUT recurring keywords
+            _recurring_kw = _re.search(r'每[天日週周]|每\s*[\d一二三四五六七八九十]+\s*分鐘|每隔|定時|工作日|weekday', user_original_request)
+
+            if _req_min and not _recurring_kw:
+                # User said "X分鐘後" (one-time) — cron MUST be "once +Xm"
+                _expected = f"once +{_req_min}m"
+                if cron != _expected:
                     _old = cron
-                    cron = f"once +{_req_min}m"
-                    import sys
-                    print(f"[GUARD] Corrected cron: {_old} → {cron} (user said {_req_min}分鐘)", file=sys.stderr)
-            else:
-                _time_h = _re.search(r'(\d+)\s*小時[後后]?', user_original_request)
-                if _time_h:
-                    _req_hr = int(_time_h.group(1))
+                    cron = _expected
+                    print(f"[GUARD] Corrected cron: {_old} → {cron} (user said {_req_min}分鐘後, one-time)", file=sys.stderr)
+            elif _req_hr and not _recurring_kw:
+                # User said "X小時後" (one-time) — cron MUST be "once +Xh"
+                _expected = f"once +{_req_hr}h"
+                if cron != _expected:
+                    _old = cron
+                    cron = _expected
+                    print(f"[GUARD] Corrected cron: {_old} → {cron} (user said {_req_hr}小時後, one-time)", file=sys.stderr)
+            elif cron.startswith("once"):
+                # Already once format — just validate the time value matches
+                if _req_min:
+                    _cron_m = _re.search(r'\+(\d+)\s*m', cron)
+                    _cron_min = int(_cron_m.group(1)) if _cron_m else None
+                    if _cron_min is not None and _cron_min != _req_min:
+                        _old = cron
+                        cron = f"once +{_req_min}m"
+                        print(f"[GUARD] Corrected cron: {_old} → {cron} (user said {_req_min}分鐘)", file=sys.stderr)
+                elif _req_hr:
                     _cron_h = _re.search(r'\+(\d+)\s*h', cron)
                     _cron_hr = int(_cron_h.group(1)) if _cron_h else None
                     if _cron_hr is not None and _cron_hr != _req_hr:
                         _old = cron
                         cron = f"once +{_req_hr}h"
-                        import sys
                         print(f"[GUARD] Corrected cron: {_old} → {cron} (user said {_req_hr}小時)", file=sys.stderr)
+
+            # Guard: Auto-correct count if Chinese numeral was used (e.g. 五則 → 5)
+            if _req_count and task_config.get("count") != _req_count:
+                _old_count = task_config.get("count")
+                task_config["count"] = _req_count
+                print(f"[GUARD] Corrected count: {_old_count} → {_req_count} (parsed from user request)", file=sys.stderr)
 
         # ── Guard: Auto-correct name if it doesn't match task type ──────
         # LLM sometimes copies name from previous task (e.g. "提醒看手機" for a news task)
@@ -400,7 +467,6 @@ def main():
             name = f"{_topic}新聞統整"
             if task_config.get("extra_instructions") and "pdf" in task_config["extra_instructions"].lower():
                 name += "PDF"
-            import sys
             print(f"[GUARD] Corrected name to: {name}", file=sys.stderr)
 
         if not name:
@@ -495,8 +561,9 @@ def main():
             return
 
         summary = []
-        for t in tasks:
+        for i, t in enumerate(tasks, 1):
             summary.append({
+                "index": i,
                 "id": t["id"],
                 "name": t["name"],
                 "type": t["type"],
@@ -514,15 +581,61 @@ def main():
         }, ensure_ascii=False))
         return
 
+    # ── Helper: auto-list when no task_id provided for modification ops ──
+    def _auto_list_for_selection(action_name: str):
+        """Return numbered task list for user to pick from."""
+        tasks = [t for t in cfg.get("tasks", []) if t.get("enabled", True)] if action_name != "resume" else cfg.get("tasks", [])
+        if not tasks:
+            print(json.dumps({
+                "status": "success",
+                "action": action_name,
+                "message": "目前沒有可操作的排程任務。",
+            }, ensure_ascii=False))
+            return True
+        summary = []
+        for i, t in enumerate(tasks, 1):
+            summary.append({
+                "index": i,
+                "id": t["id"],
+                "name": t["name"],
+                "type": t["type"],
+                "cron": t["cron"],
+                "enabled": t.get("enabled", True),
+            })
+        _action_zh = {"remove": "刪除", "pause": "暫停", "resume": "恢復", "trigger": "立即執行"}.get(action_name, action_name)
+        print(json.dumps({
+            "status": "need_selection",
+            "action": action_name,
+            "tasks": summary,
+            "count": len(summary),
+            "message": f"共有 {len(summary)} 個排程任務，請問要{_action_zh}哪一個？",
+            "instruction": (
+                f"請以編號清單呈現排程（① ② ③ ...），詢問使用者要{_action_zh}哪一項。"
+                "不要顯示 task_id。使用者回覆「第X項」或「①」時，"
+                f"再次呼叫此工具 action={action_name}，task_id 填入使用者指定的編號數字（如 '2'）。"
+            ),
+        }, ensure_ascii=False))
+        return True
+
+    # ── Helper: resolve task_id (supports index like "2", "#2", "第2項", "②") ──
+    def _resolve_task_id(tid: str) -> str:
+        """If tid is not a real task_id, try to parse it as an index."""
+        if tid.startswith("task_"):
+            return tid
+        idx = _parse_task_index(tid)
+        if idx and 1 <= idx <= len(cfg.get("tasks", [])):
+            resolved = cfg["tasks"][idx - 1]["id"]
+            print(f"[INDEX] Resolved index {idx} → {resolved}", file=sys.stderr)
+            return resolved
+        return tid  # fallback: return as-is
+
     # ── ACTION: remove ──
     if action == "remove":
         if not task_id:
-            print(json.dumps({
-                "status": "error",
-                "message": "請提供要刪除的 task_id",
-            }, ensure_ascii=False))
-            return
+            if _auto_list_for_selection("remove"):
+                return
 
+        task_id = _resolve_task_id(task_id)
         original_len = len(cfg["tasks"])
         cfg["tasks"] = [t for t in cfg["tasks"] if t["id"] != task_id]
         if len(cfg["tasks"]) < original_len:
@@ -545,6 +658,10 @@ def main():
 
     # ── ACTION: pause ──
     if action == "pause":
+        if not task_id:
+            if _auto_list_for_selection("pause"):
+                return
+        task_id = _resolve_task_id(task_id)
         for t in cfg["tasks"]:
             if t["id"] == task_id:
                 t["enabled"] = False
@@ -561,6 +678,10 @@ def main():
 
     # ── ACTION: resume ──
     if action == "resume":
+        if not task_id:
+            if _auto_list_for_selection("resume"):
+                return
+        task_id = _resolve_task_id(task_id)
         for t in cfg["tasks"]:
             if t["id"] == task_id:
                 t["enabled"] = True
@@ -577,6 +698,10 @@ def main():
 
     # ── ACTION: trigger ──
     if action == "trigger":
+        if not task_id:
+            if _auto_list_for_selection("trigger"):
+                return
+        task_id = _resolve_task_id(task_id)
         # Mark for immediate execution by setting last_run to None
         # and cron to current time
         for t in cfg["tasks"]:
