@@ -296,6 +296,33 @@ def main():
 
     # ── ACTION: add ──
     if action == "add":
+        # ── Guard: reject follow-up confirmations as original_request ──
+        # If user_original_request is a short confirmation like "先刪除再新增" / "好的" / "是",
+        # it must NOT be used as task content. The LLM should have extracted the real request
+        # from conversation history and put it in config fields.
+        _FOLLOWUP_PATTERNS = [
+            "先刪除", "刪除這個", "再新增", "好的", "好啊", "可以", "是的", "對", "沒問題",
+            "幫我", "麻煩", "OK", "ok", "確認", "執行", "開始",
+        ]
+        _or = task_config.get("original_request", "") or user_original_request or ""
+        _is_followup = (
+            len(_or) <= 20
+            and any(p in _or for p in _FOLLOWUP_PATTERNS)
+            and not any(kw in _or for kw in ["新聞", "推送", "提醒", "學習", "摘要", "搜尋"])
+        )
+        if _is_followup:
+            # Reject: tell LLM to extract real parameters from conversation history
+            print(json.dumps({
+                "status": "error",
+                "action": "add",
+                "message": (
+                    f"⚠️ original_request 為「{_or}」，這是確認語而非排程需求。"
+                    "請從對話歷史中找到使用者的原始排程需求（包含時間、內容、數量等），"
+                    "重新提取 task_type、cron、config 各欄位後再呼叫 add。"
+                ),
+            }, ensure_ascii=False))
+            return
+
         # Always store the user's original request for fallback prompt generation
         if user_original_request and "original_request" not in task_config:
             task_config["original_request"] = user_original_request
