@@ -50,13 +50,12 @@
       "id": "mcp-groovenauts-meeting-analyst",
       "name": "mcp-groovenauts-meeting-analyst",
       "version": "1.1.0",
-      "description": "Groovenaust / Groovenauts 專案會議分析與正式會議紀錄匯出。 以國際專案管理標準（PMP®/PgMP®/PfMP®）為核心， 將跨語言（日文、英文、中文）、跨文化、跨技術的日方會議逐字稿， 轉化為「可決策、可追蹤、可治理」的專案行動系統。 內含公司正式會議紀錄 docx 範本（中文版/日文版），可依範本匯出 docx/pdf/markdown。 當使用者提到「Groovenaust」「Groovenauts」「日方會議」「日本會議分析」「跨國會議紀錄」 「專案會議分析」「GVN會議」「日方逐字稿分析」時觸發此技能。",
+      "description": "Groovenauts 專案會議分析與正式會議紀錄匯出。 以國際專案管理標準（PMP®/PgMP®/PfMP®）為核心， 將跨語言（日文、英文、中文）、跨文化、跨技術的日方會議逐字稿， 轉化為「可決策、可追蹤、可治理」的專案行動系統。 內含公司正式會議紀錄 docx 範本（中文版/日文版），可依範本匯出 docx/pdf/markdown。 當使用者提到「Groovenauts會議記錄」「日方會議」「日本會議分析」「跨國會議紀錄」「GVN會議」「日方逐字稿分析」時觸發此技能。",
       "tags": [
         "mcp",
         "groovenauts",
         "meeting",
         "analyst",
-        "groovenaust",
         "pmp",
         "pgmp",
         "pfmp",
@@ -81,10 +80,13 @@
         "跨文化",
         "跨技術",
         "日方",
-        "逐字"
+        "逐字",
+        "轉化"
       ],
-      "runtime_requirements": [],
-      "estimated_tokens": 3000,
+      "runtime_requirements": [
+        "docx2pdf"
+      ],
+      "estimated_tokens": 12000,
       "requires_venv": false,
       "parameters": {
         "type": "object",
@@ -95,19 +97,19 @@
           },
           "language": {
             "type": "string",
-            "description": "輸出語言，預設繁體中文",
+            "description": "輸出語言，依照使用者指定的語言輸出分析結果。若未指定，預設為繁體中文。注意：中文內容會轉譯為日文意圖摘要供日方理解，但整體分析輸出仍以此參數指定的語言為主。",
             "default": "繁體中文"
           },
           "export_format": {
             "type": "string",
-            "description": "選填。匯出格式，可指定 markdown / docx / pdf / notion。未指定時以 markdown 格式直接回覆",
+            "description": "選填。匯出格式，可指定 markdown / docx / pdf / notion。未指定時以 docx 格式直接回覆",
             "enum": [
               "markdown",
               "docx",
               "pdf",
               "notion"
             ],
-            "default": "markdown"
+            "default": "docx"
           }
         },
         "required": [
