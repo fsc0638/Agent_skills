@@ -453,6 +453,40 @@ def main():
                         cron = f"once +{_req_hr}h"
                         print(f"[GUARD] Corrected cron: {_old} → {cron} (user said {_req_hr}小時)", file=sys.stderr)
 
+            # Guard: Fixed-time one-shot — "在1700時" / "17點" / "下午5點" without recurring keywords
+            # If user said a specific clock time but no "每天/每日/每週", treat as one-time
+            if not _recurring_kw and not _req_min and not _req_hr and not cron.startswith("once"):
+                # Detect fixed-time patterns: "1700", "17:00", "17點", "下午5點"
+                _fixed_time = None
+                _ft = _re.search(r'(?:在|於)?\s*(\d{3,4})\s*[時点點]?', user_original_request)
+                if _ft:
+                    _t = _ft.group(1).zfill(4)
+                    _fixed_time = (int(_t[:2]), int(_t[2:]))
+                if not _fixed_time:
+                    _ft = _re.search(r'(\d{1,2})\s*[:：]\s*(\d{2})', user_original_request)
+                    if _ft:
+                        _fixed_time = (int(_ft.group(1)), int(_ft.group(2)))
+                if not _fixed_time:
+                    _ft = _re.search(r'(\d{1,2})\s*[點点]\s*(\d{0,2})', user_original_request)
+                    if _ft:
+                        _h = int(_ft.group(1))
+                        _m = int(_ft.group(2)) if _ft.group(2) else 0
+                        # Handle 下午/PM
+                        if _re.search(r'下午|晚上|pm', user_original_request, _re.IGNORECASE) and _h < 12:
+                            _h += 12
+                        _fixed_time = (_h, _m)
+
+                if _fixed_time:
+                    _target_h, _target_m = _fixed_time
+                    _now = datetime.now()
+                    _target = _now.replace(hour=_target_h, minute=_target_m, second=0, microsecond=0)
+                    if _target <= _now:
+                        _target += timedelta(days=1)  # Tomorrow if time already passed
+                    _diff_min = max(1, int((_target - _now).total_seconds() / 60))
+                    _old = cron
+                    cron = f"once +{_diff_min}m"
+                    print(f"[GUARD] Fixed-time one-shot: {_old} → {cron} (target {_target_h:02d}:{_target_m:02d}, {_diff_min}min from now)", file=sys.stderr)
+
             # Guard: Auto-correct count if Chinese numeral was used (e.g. 五則 → 5)
             if _req_count and task_config.get("count") != _req_count:
                 _old_count = task_config.get("count")
