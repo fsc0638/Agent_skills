@@ -206,7 +206,7 @@ _ws = os.environ.get("WORKSPACE_DIR") or os.path.join(os.getcwd(), "workspace")
 downloads_dir = os.path.join(_ws, "downloads")
 os.makedirs(downloads_dir, exist_ok=True)
 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-filename = f"meeting_{ts}.docx"
+filename = f"Kway_x_Groovenauts_Project_Meeting_Minutes_{ts}.docx"
 out_path = os.path.join(downloads_dir, filename)
 doc.save(out_path)
 base_url = os.environ.get("BASE_URL", "").rstrip("/")
@@ -330,7 +330,7 @@ ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 tmp_docx = os.path.join(downloads_dir, f"_tmp_meeting_{ts}.docx")
 doc.save(tmp_docx)
 
-filename = f"meeting_{ts}.pdf"
+filename = f"Kway_x_Groovenauts_Project_Meeting_Minutes_{ts}.pdf"
 out_pdf = os.path.join(downloads_dir, filename)
 convert(tmp_docx, out_pdf)
 
