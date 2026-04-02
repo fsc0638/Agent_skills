@@ -663,8 +663,31 @@ def main():
             return resolved
         return tid  # fallback: return as-is
 
+    # ── Helper: try to extract task index from user_original_request when task_id is empty ──
+    def _try_extract_task_id_from_request():
+        """Last resort: if LLM didn't fill task_id, parse index from user's raw request."""
+        if not user_original_request:
+            return ""
+        idx = _parse_task_index(user_original_request)
+        if idx and 1 <= idx <= len(cfg.get("tasks", [])):
+            resolved = cfg["tasks"][idx - 1]["id"]
+            print(f"[GUARD] Extracted task index {idx} → {resolved} from user request: '{user_original_request}'", file=sys.stderr)
+            return resolved
+        # Also try bare digit anywhere in the request
+        import re as _re2
+        _m = _re2.search(r'(\d+)', user_original_request)
+        if _m:
+            _idx = int(_m.group(1))
+            if 1 <= _idx <= len(cfg.get("tasks", [])):
+                resolved = cfg["tasks"][_idx - 1]["id"]
+                print(f"[GUARD] Extracted bare digit {_idx} → {resolved} from user request: '{user_original_request}'", file=sys.stderr)
+                return resolved
+        return ""
+
     # ── ACTION: remove ──
     if action == "remove":
+        if not task_id:
+            task_id = _try_extract_task_id_from_request()
         if not task_id:
             if _auto_list_for_selection("remove"):
                 return
@@ -693,6 +716,8 @@ def main():
     # ── ACTION: pause ──
     if action == "pause":
         if not task_id:
+            task_id = _try_extract_task_id_from_request()
+        if not task_id:
             if _auto_list_for_selection("pause"):
                 return
         task_id = _resolve_task_id(task_id)
@@ -713,6 +738,8 @@ def main():
     # ── ACTION: resume ──
     if action == "resume":
         if not task_id:
+            task_id = _try_extract_task_id_from_request()
+        if not task_id:
             if _auto_list_for_selection("resume"):
                 return
         task_id = _resolve_task_id(task_id)
@@ -732,6 +759,8 @@ def main():
 
     # ── ACTION: trigger ──
     if action == "trigger":
+        if not task_id:
+            task_id = _try_extract_task_id_from_request()
         if not task_id:
             if _auto_list_for_selection("trigger"):
                 return
