@@ -13,15 +13,20 @@ from datetime import datetime, timedelta
 
 
 def _load_credentials():
-    """Load Google OAuth credentials from the path provided by UMA."""
+    """Load Google credentials (Service Account or OAuth) from UMA-injected env."""
+    cred_path = os.getenv("GOOGLE_CREDENTIALS_PATH", "")
+    cred_type = os.getenv("GOOGLE_CREDENTIAL_TYPE", "")
+
+    if not cred_path or not os.path.exists(cred_path):
+        raise RuntimeError("Google 帳號尚未綁定。請先完成 Google 授權。")
+
+    if cred_type == "service_account" or "service_account" in cred_path:
+        from google.oauth2 import service_account
+        SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+        return service_account.Credentials.from_service_account_file(cred_path, scopes=SCOPES)
+
     from google.oauth2.credentials import Credentials
     from google.auth.transport.requests import Request
-
-    cred_path = os.getenv("GOOGLE_CREDENTIALS_PATH", "")
-    if not cred_path or not os.path.exists(cred_path):
-        raise RuntimeError(
-            "Google 帳號尚未綁定。請先透過 LINE 或 Web UI 完成 Google OAuth 授權。"
-        )
 
     with open(cred_path, "r", encoding="utf-8") as f:
         cred_data = json.load(f)

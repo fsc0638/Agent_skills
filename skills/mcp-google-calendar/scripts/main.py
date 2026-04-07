@@ -12,15 +12,27 @@ from datetime import datetime, timedelta
 
 
 def _load_credentials():
-    """Load Google OAuth credentials from the path provided by UMA."""
-    from google.oauth2.credentials import Credentials
-    from google.auth.transport.requests import Request
-
+    """Load Google credentials from the path provided by UMA.
+    Supports both Service Account (JSON key) and OAuth (user token).
+    """
     cred_path = os.getenv("GOOGLE_CREDENTIALS_PATH", "")
+    cred_type = os.getenv("GOOGLE_CREDENTIAL_TYPE", "")
+
     if not cred_path or not os.path.exists(cred_path):
         raise RuntimeError(
             "Google 帳號尚未綁定。請先透過 LINE 或 Web UI 完成 Google OAuth 授權。"
         )
+
+    # Service Account
+    if cred_type == "service_account" or "service_account" in cred_path:
+        from google.oauth2 import service_account
+        SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.events"]
+        creds = service_account.Credentials.from_service_account_file(cred_path, scopes=SCOPES)
+        return creds
+
+    # OAuth (personal user token)
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
 
     with open(cred_path, "r", encoding="utf-8") as f:
         cred_data = json.load(f)
@@ -36,7 +48,6 @@ def _load_credentials():
 
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
-        # Persist refreshed token
         cred_data["token"] = creds.token
         with open(cred_path, "w", encoding="utf-8") as f:
             json.dump(cred_data, f, ensure_ascii=False, indent=2)

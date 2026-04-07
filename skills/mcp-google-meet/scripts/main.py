@@ -13,15 +13,22 @@ from datetime import datetime, timedelta
 
 
 def _load_credentials():
-    """Load Google OAuth credentials from the path provided by UMA."""
+    """Load Google OAuth credentials for Meet (personal OAuth only, SA not supported)."""
+    cred_path = os.getenv("GOOGLE_CREDENTIALS_PATH", "")
+    cred_type = os.getenv("GOOGLE_CREDENTIAL_TYPE", "")
+
+    if not cred_path or not os.path.exists(cred_path):
+        raise RuntimeError("Google 帳號尚未綁定。建立 Meet 連結需要綁定個人 Google 帳號。")
+
+    # Service Account cannot create Meet links
+    if cred_type == "service_account" or "service_account" in cred_path:
+        raise RuntimeError(
+            "Google Meet 連結無法透過 Service Account 建立。"
+            "請先綁定你的個人 Google 帳號才能使用 Meet 功能。"
+        )
+
     from google.oauth2.credentials import Credentials
     from google.auth.transport.requests import Request
-
-    cred_path = os.getenv("GOOGLE_CREDENTIALS_PATH", "")
-    if not cred_path or not os.path.exists(cred_path):
-        raise RuntimeError(
-            "Google 帳號尚未綁定。請先透過 LINE 或 Web UI 完成 Google OAuth 授權。"
-        )
 
     with open(cred_path, "r", encoding="utf-8") as f:
         cred_data = json.load(f)
