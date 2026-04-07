@@ -302,13 +302,17 @@ def main():
         # from conversation history and put it in config fields.
         _FOLLOWUP_PATTERNS = [
             "先刪除", "刪除這個", "再新增", "好的", "好啊", "可以", "是的", "對", "沒問題",
-            "幫我", "麻煩", "OK", "ok", "確認", "執行", "開始",
+            "幫我", "麻煩", "OK", "ok", "確認", "執行", "開始", "正確", "沒錯", "對的",
+            "yes", "Yes", "YES", "嗯", "恩", "好", "要", "是", "行",
         ]
         _or = task_config.get("original_request", "") or user_original_request or ""
         _is_followup = (
+            len(_or) <= 10
+            and not any(kw in _or for kw in ["新聞", "推送", "提醒", "學習", "摘要", "搜尋", "行程", "排程"])
+        ) or (
             len(_or) <= 20
             and any(p in _or for p in _FOLLOWUP_PATTERNS)
-            and not any(kw in _or for kw in ["新聞", "推送", "提醒", "學習", "摘要", "搜尋"])
+            and not any(kw in _or for kw in ["新聞", "推送", "提醒", "學習", "摘要", "搜尋", "行程", "排程"])
         )
         if _is_followup:
             # Reject: tell LLM to extract real parameters from conversation history
