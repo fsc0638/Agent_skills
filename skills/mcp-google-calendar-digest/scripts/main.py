@@ -178,7 +178,7 @@ def main():
     try:
         start, end, label = _get_time_range(range_type)
         result = service.events().list(
-            calendarId="primary",
+            calendarId=os.getenv("GOOGLE_CALENDAR_ID", "primary"),
             timeMin=start.isoformat(),
             timeMax=end.isoformat(),
             singleEvents=True,

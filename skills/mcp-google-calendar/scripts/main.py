@@ -98,7 +98,7 @@ def _format_event(event):
 def action_today(service, args):
     start, end = _today_range()
     result = service.events().list(
-        calendarId="primary",
+        calendarId=os.getenv("GOOGLE_CALENDAR_ID", "primary"),
         timeMin=start,
         timeMax=end,
         singleEvents=True,
@@ -130,7 +130,7 @@ def action_get(service, args):
     event_id = args.get("event_id")
     if not event_id:
         return {"status": "error", "message": "缺少 event_id 參數"}
-    event = service.events().get(calendarId="primary", eventId=event_id).execute()
+    event = service.events().get(calendarId=os.getenv("GOOGLE_CALENDAR_ID", "primary"), eventId=event_id).execute()
     return {"status": "success", "event": _format_event(event)}
 
 
@@ -159,7 +159,7 @@ def action_create(service, args):
     if args.get("attendees"):
         body["attendees"] = [{"email": e} for e in args["attendees"]]
 
-    event = service.events().insert(calendarId="primary", body=body, sendUpdates="all").execute()
+    event = service.events().insert(calendarId=os.getenv("GOOGLE_CALENDAR_ID", "primary"), body=body, sendUpdates="all").execute()
     return {
         "status": "success",
         "event_id": event.get("id"),
@@ -172,7 +172,7 @@ def action_update(service, args):
     if not event_id:
         return {"status": "error", "message": "缺少 event_id 參數"}
 
-    event = service.events().get(calendarId="primary", eventId=event_id).execute()
+    event = service.events().get(calendarId=os.getenv("GOOGLE_CALENDAR_ID", "primary"), eventId=event_id).execute()
 
     if args.get("title"):
         event["summary"] = args["title"]
@@ -188,7 +188,7 @@ def action_update(service, args):
         event["attendees"] = [{"email": e} for e in args["attendees"]]
 
     updated = service.events().update(
-        calendarId="primary", eventId=event_id, body=event, sendUpdates="all"
+        calendarId=os.getenv("GOOGLE_CALENDAR_ID", "primary"), eventId=event_id, body=event, sendUpdates="all"
     ).execute()
     return {
         "status": "success",
@@ -201,7 +201,7 @@ def action_delete(service, args):
     event_id = args.get("event_id")
     if not event_id:
         return {"status": "error", "message": "缺少 event_id 參數"}
-    service.events().delete(calendarId="primary", eventId=event_id, sendUpdates="all").execute()
+    service.events().delete(calendarId=os.getenv("GOOGLE_CALENDAR_ID", "primary"), eventId=event_id, sendUpdates="all").execute()
     return {"status": "success", "message": f"事件 {event_id} 已刪除"}
 
 
@@ -211,13 +211,14 @@ def action_free_busy(service, args):
     if not start or not end:
         return {"status": "error", "message": "free_busy 需要 start 和 end 參數"}
 
+    _cal_id = os.getenv("GOOGLE_CALENDAR_ID", "primary")
     body = {
         "timeMin": start,
         "timeMax": end,
-        "items": [{"id": "primary"}],
+        "items": [{"id": _cal_id}],
     }
     result = service.freebusy().query(body=body).execute()
-    busy = result.get("calendars", {}).get("primary", {}).get("busy", [])
+    busy = result.get("calendars", {}).get(_cal_id, {}).get("busy", [])
     return {"status": "success", "busy": busy}
 
 
