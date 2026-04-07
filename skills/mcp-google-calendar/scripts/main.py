@@ -229,7 +229,15 @@ def main():
     except json.JSONDecodeError:
         args = {}
 
-    action = args.get("action", "today")
+    action = args.get("action", "")
+    # Auto-detect action from parameters when not explicitly set
+    if not action:
+        if any(k in args for k in ("start", "end", "timeMin", "timeMax", "date_start", "date_end")):
+            action = "list"
+        elif args.get("event_id"):
+            action = "get"
+        else:
+            action = "today"
 
     try:
         service = _get_service()
