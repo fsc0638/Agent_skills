@@ -75,6 +75,15 @@ def _today_range():
 def _format_event(event):
     start = event.get("start", {}).get("dateTime") or event.get("start", {}).get("date", "")
     end = event.get("end", {}).get("dateTime") or event.get("end", {}).get("date", "")
+    # Google API: all-day event end date is exclusive (e.g. 4/30 means ends on 4/29)
+    # Subtract 1 day for human-friendly display
+    if "date" in event.get("end", {}) and not event.get("end", {}).get("dateTime"):
+        from datetime import date as _date
+        try:
+            _end_date = _date.fromisoformat(end)
+            end = (_end_date - timedelta(days=1)).isoformat()
+        except (ValueError, TypeError):
+            pass
     meet_link = None
     conf = event.get("conferenceData")
     if conf:
