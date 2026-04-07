@@ -73,9 +73,29 @@ execution_timeout: 30
 - 開 Google Meet 連結 → 請用 mcp-google-meet
 - 寄信通知 → 請用 mcp-google-gmail
 
-## 回覆格式
-- 列出行程時，只需顯示時間、標題、地點、說明，**不要附上 Google Calendar 連結（html_link）**
-- 保持簡潔，用條列呈現即可
+## 回覆格式（嚴格遵守）
+
+列出行程時**必須使用以下編號格式**，每個事件一個區塊，只顯示有值的欄位：
+
+```
+N月底的行程有 X 個：
+
+1. 標題
+   日期：M月D日 到 M月D日
+   地點：XXXX
+
+2. 標題
+   時間：HH:MM - HH:MM
+   地點：XXXX
+   說明：XXXX
+```
+
+規則：
+- 全天事件用「日期：X月X日 到 X月X日」
+- 非全天事件用「時間：HH:MM - HH:MM」
+- 地點、說明只在有值時顯示
+- **不要顯示連結、event_id、organizer、attendees**
+- **不要用 dash (-) 條列，用編號 1. 2. 3.**
 
 ## 風險分級邏輯
 - `list` / `today` / `get` / `free_busy` → 唯讀操作，自動放行
