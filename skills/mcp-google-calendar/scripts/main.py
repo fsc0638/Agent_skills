@@ -91,17 +91,21 @@ def _format_event(event):
             if ep.get("entryPointType") == "video":
                 meet_link = ep.get("uri")
                 break
-    return {
+    result = {
         "event_id": event.get("id", ""),
         "title": event.get("summary", "(無標題)"),
         "start": start,
         "end": end,
         "location": event.get("location", ""),
         "description": event.get("description", ""),
-        "meet_link": meet_link,
-        "attendees": [a.get("email", "") for a in event.get("attendees", [])],
-        "html_link": event.get("htmlLink", ""),
     }
+    if meet_link:
+        result["meet_link"] = meet_link
+    attendees = [a.get("email", "") for a in event.get("attendees", [])]
+    if attendees:
+        result["attendees"] = attendees
+    # html_link intentionally omitted — not needed in LINE response
+    return result
 
 
 def action_today(service, args):
