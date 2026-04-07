@@ -203,7 +203,7 @@ def action_create(service, args):
     return {
         "status": "success",
         "event_id": event.get("id"),
-        "html_link": event.get("htmlLink", ""),
+        "message": "行程已建立",
     }
 
 
@@ -233,7 +233,7 @@ def action_update(service, args):
     return {
         "status": "success",
         "event_id": updated.get("id"),
-        "html_link": updated.get("htmlLink", ""),
+        "message": "行程已更新",
     }
 
 
