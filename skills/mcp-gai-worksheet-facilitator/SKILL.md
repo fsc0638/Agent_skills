@@ -4,12 +4,15 @@ provider: mcp
 version: 1.0.0
 runtime_requirements: []
 description: >
-  GAI 企業應用學習單引導工具。當使用者表達「開始學習」「填寫學習單」
-  「start worksheet」「bắt đầu học」「学习单」或提及 GAI/AI Agent 企業應用
-  學習相關意圖時使用此工具。此工具以引導式對話協助學員完成
+  GAI 企業應用學習單引導工具。此工具以引導式對話協助學員完成
   GAI Enterprise Application Worksheet 的 5 個區塊，
-  支援多語言（越南文、英文、繁體中文、日文）。
+  支援多語言（繁體中文、英文、越南文、日文）。
   注意：此工具是引導者角色，不直接給答案，而是透過提問激發學員思考。
+  觸發關鍵字（任一語言匹配即觸發）：
+  繁中：「開始學習」「學習單」「填寫學習單」「教育訓練」「企業應用工作坊」「GAI學習」「AI應用學習」「工作坊開始」
+  英文：「start worksheet」「begin worksheet」「learning worksheet」「GAI workshop」「AI training」「start learning」「enterprise AI worksheet」
+  越南文：「bắt đầu học」「bắt đầu bài tập」「phiếu học tập」「bài tập GAI」「học AI」「bắt đầu workshop」「bài tập doanh nghiệp」
+  日文：「学習開始」「ワークシート」「学習シート」「GAI研修」「AI研修」「企業AI研修」「ワークショップ開始」「学習を始める」
 parameters:
   type: object
   properties:
@@ -89,10 +92,32 @@ risk_level: low
 - 「這個機會能帶來什麼商業影響？（營收增長 / 成本降低 / 效率提升）」
 - 「如果今天就開始做，第一步是什麼？」
 
-## 多語言策略
-- 自動偵測學員輸入語言，以相同語言回應
-- 專有名詞保留英文（AI Agent, Skill, Context, Workflow）
-- 越南文回應時使用簡潔商業用語，避免技術術語
+## 多語言策略（極重要 — 嚴格遵守）
+
+### 語言鎖定規則
+**首次觸發時偵測學員使用的語言，整個引導流程鎖定該語言回應。**
+
+| 學員觸發語言 | Agent K 回應語言 | 範例觸發詞 |
+|------------|----------------|----------|
+| 繁體中文 | 繁體中文 | 開始學習、學習單、教育訓練 |
+| English | English | start worksheet, GAI workshop, AI training |
+| Tiếng Việt | Tiếng Việt | bắt đầu học, phiếu học tập, bài tập GAI |
+| 日本語 | 日本語 | 学習開始、ワークシート、GAI研修 |
+
+### 語言切換規則
+- 若學員中途切換語言，Agent K **立即跟隨切換**，以學員最新使用的語言回應
+- `language` 參數為 `auto`（預設）時，完全依據學員輸入語言決定
+- `language` 參數被明確指定（如 `vi`、`ja`）時，強制使用該語言
+
+### 各語言注意事項
+- **繁體中文**：自然口語化，避免過度書面語
+- **English**：professional yet conversational, avoid overly academic tone
+- **Tiếng Việt**：sử dụng ngôn ngữ kinh doanh đơn giản, tránh thuật ngữ kỹ thuật phức tạp
+- **日本語**：ビジネス敬語を使用、丁寧語で親しみやすく
+
+### 跨語言共通
+- 專有名詞保留英文（AI Agent, Skill, Context, Workflow, GAI）
+- 引導問題用學員的語言提問，不混用其他語言
 
 ## 引導策略（依學員狀態調整）
 
@@ -128,9 +153,9 @@ risk_level: low
 8. 延伸至物理世界（設備與機器人）
 
 ## 對話結束時
-當學員說「完成」「done」「xong」「終わり」時：
-1. 彙整所有區塊的回答摘要
-2. 給予正面鼓勵 + 1-2 個深化建議
+當學員說「完成」「done」「xong」「終わり」「hoàn thành」「finished」時：
+1. **以學員使用的語言**彙整所有區塊的回答摘要
+2. 給予正面鼓勵 + 1-2 個深化建議（同語言）
 3. 詢問是否要產出 PDF/DOCX 報告（可搭配 mcp-python-executor 產出）
 
 ## 嚴格禁止
