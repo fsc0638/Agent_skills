@@ -135,6 +135,39 @@ def _format_event(event):
     return result
 
 
+def _render_events_text(events):
+    """Pre-format events as human-readable text so LLM outputs it directly."""
+    if not events:
+        return "沒有任何行程。"
+    lines = [f"行程共 {len(events)} 個：\n"]
+    for i, e in enumerate(events, 1):
+        lines.append(f"{i}. {e['title']}")
+        if e.get("all_day"):
+            lines.append(f"   日期：{e['start']} 到 {e['end']}")
+        else:
+            s = e.get("start", "").split("T")[1][:5] if "T" in e.get("start", "") else e.get("start", "")
+            ed = e.get("end", "").split("T")[1][:5] if "T" in e.get("end", "") else e.get("end", "")
+            lines.append(f"   時間：{s} - {ed}")
+        if e.get("location"):
+            lines.append(f"   地點：{e['location']}")
+        if e.get("description"):
+            lines.append(f"   說明：{e['description']}")
+        if e.get("meet_link"):
+            lines.append(f"   Meet：{e['meet_link']}")
+        if e.get("attendees"):
+            lines.append(f"   參與者：{', '.join(e['attendees'])}")
+        if e.get("organizer"):
+            lines.append(f"   主辦人：{e['organizer']}")
+        if e.get("status"):
+            lines.append(f"   狀態：{e['status']}")
+        if e.get("reminders"):
+            lines.append(f"   提醒：{', '.join(e['reminders'])}")
+        if e.get("recurring"):
+            lines.append(f"   重複：是")
+        lines.append("")  # blank line between events
+    return "\n".join(lines).strip()
+
+
 def action_today(service, args):
     start, end = _today_range()
     result = service.events().list(
@@ -146,7 +179,9 @@ def action_today(service, args):
         maxResults=args.get("max_results", 20),
     ).execute()
     events = [_format_event(e) for e in result.get("items", [])]
-    return {"status": "success", "events": events, "count": len(events)}
+    text = _render_events_text(events)
+    return {"status": "success", "formatted_text": text, "count": len(events),
+            "instruction": "請直接將 formatted_text 的內容原樣回覆給使用者，不要重新排版。"}
 
 
 def action_list(service, args):
@@ -157,13 +192,15 @@ def action_list(service, args):
         "timeMin": start,
         "singleEvents": True,
         "orderBy": "startTime",
-        "maxResults": args.get("max_results", 10),
+        "maxResults": args.get("max_results", 20),
     }
     if end:
         kwargs["timeMax"] = end
     result = service.events().list(**kwargs).execute()
     events = [_format_event(e) for e in result.get("items", [])]
-    return {"status": "success", "events": events, "count": len(events)}
+    text = _render_events_text(events)
+    return {"status": "success", "formatted_text": text, "count": len(events),
+            "instruction": "請直接將 formatted_text 的內容原樣回覆給使用者，不要重新排版。"}
 
 
 def action_get(service, args):
