@@ -39,10 +39,7 @@ parameters:
       description: "[get_link] 要查詢 Meet 連結的日曆事件 ID"
   required: [action]
 estimated_tokens: 80
-risk_level: high
-risk_description: >
-  建立會議 (create/instant) 會在使用者的 Google Calendar 建立事件並產生 Meet 連結。
-  若有指定 attendees，參與者將收到日曆邀請通知。get_link 為唯讀操作，無風險。
+risk_level: low
 execution_timeout: 30
 ---
 

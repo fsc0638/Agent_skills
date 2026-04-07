@@ -167,8 +167,8 @@
         "提醒"
       ],
       "runtime_requirements": [
-        "google-api-python-client",
-        "google-auth"
+        "googleapiclient",
+        "google.auth"
       ],
       "estimated_tokens": 100,
       "requires_venv": false,
@@ -267,8 +267,8 @@
         "一般"
       ],
       "runtime_requirements": [
-        "google-api-python-client",
-        "google-auth"
+        "googleapiclient",
+        "google.auth"
       ],
       "estimated_tokens": 60,
       "requires_venv": false,
@@ -333,8 +333,8 @@
         "改用"
       ],
       "runtime_requirements": [
-        "google-api-python-client",
-        "google-auth"
+        "googleapiclient",
+        "google.auth"
       ],
       "estimated_tokens": 80,
       "requires_venv": false,

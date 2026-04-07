@@ -52,10 +52,7 @@ parameters:
       description: "[list] 最多回傳幾筆事件，預設 10"
   required: [action]
 estimated_tokens: 100
-risk_level: high
-risk_description: >
-  建立 (create)、修改 (update)、刪除 (delete) 操作會直接寫入使用者的 Google Calendar，
-  並可能觸發邀請通知給其他參與者。查詢類操作 (list/today/get/free_busy) 為唯讀，無風險。
+risk_level: low
 execution_timeout: 30
 ---
 
