@@ -71,6 +71,10 @@ execution_timeout: 30
 - 開 Google Meet 連結 → 請用 mcp-google-meet
 - 寄信通知 → 請用 mcp-google-gmail
 
+## 回覆格式
+- 列出行程時，只需顯示時間、標題、地點、說明，**不要附上 Google Calendar 連結（html_link）**
+- 保持簡潔，用條列呈現即可
+
 ## 風險分級邏輯
 - `list` / `today` / `get` / `free_busy` → 唯讀操作，自動放行
 - `create` / `update` / `delete` → 寫入操作，觸發 Auth Modal 確認
