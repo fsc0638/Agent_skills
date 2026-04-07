@@ -110,10 +110,10 @@ def action_today(service, args):
 
 
 def action_list(service, args):
-    start = args.get("start", _now_iso())
-    end = args.get("end")
+    start = args.get("start") or args.get("timeMin") or args.get("date_start") or _now_iso()
+    end = args.get("end") or args.get("timeMax") or args.get("date_end")
     kwargs = {
-        "calendarId": "primary",
+        "calendarId": os.getenv("GOOGLE_CALENDAR_ID", "primary"),
         "timeMin": start,
         "singleEvents": True,
         "orderBy": "startTime",
