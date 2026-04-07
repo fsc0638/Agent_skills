@@ -5,8 +5,10 @@ version: 1.0.0
 runtime_requirements: [googleapiclient, google.auth]
 description: >
   Google 日曆管理工具。查詢行程、建立事件、修改事件、刪除事件、查詢空閒時段。
-  當使用者提到「行程」「日曆」「排程」「幾點有會」「空閒時間」「安排會議」
-  「建立事件」「取消會議」「calendar」等與時間管理相關的意圖時使用此工具。
+  當使用者提到「行程」「日曆」「幾點有會」「空閒時間」「安排會議」「建立事件」「取消會議」等意圖時使用此工具。
+  【參數用法】action 必填：today=今日行程、list=指定日期範圍（需帶 start/end，ISO 格式如 2026-04-25T00:00:00+08:00）、
+  create=建立事件（需 title/start/end）、update=修改（需 event_id）、delete=刪除（需 event_id）、free_busy=查空閒（需 start/end）。
+  查「X月底行程」→ 用 action=list + start/end；查「今天行程」→ 用 action=today。
   注意：若使用者要求「開 Google Meet 連結」，請改用 mcp-google-meet。
   若使用者要求「提醒我」但不涉及日曆事件，請改用 mcp-schedule-manager。
 parameters:
