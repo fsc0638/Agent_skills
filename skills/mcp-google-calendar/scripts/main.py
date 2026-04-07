@@ -91,20 +91,47 @@ def _format_event(event):
             if ep.get("entryPointType") == "video":
                 meet_link = ep.get("uri")
                 break
-    result = {
-        "event_id": event.get("id", ""),
-        "title": event.get("summary", "(無標題)"),
-        "start": start,
-        "end": end,
-        "location": event.get("location", ""),
-        "description": event.get("description", ""),
-    }
+    # Build result with only non-empty fields
+    result = {"event_id": event.get("id", "")}
+
+    result["title"] = event.get("summary", "(無標題)")
+    result["start"] = start
+    result["end"] = end
+
+    # All-day flag
+    if "date" in event.get("start", {}):
+        result["all_day"] = True
+
+    if event.get("location"):
+        result["location"] = event["location"]
+
+    if event.get("description"):
+        result["description"] = event["description"]
+
     if meet_link:
         result["meet_link"] = meet_link
-    attendees = [a.get("email", "") for a in event.get("attendees", [])]
+
+    attendees = [a.get("email", "") for a in event.get("attendees", []) if a.get("email")]
     if attendees:
         result["attendees"] = attendees
-    # html_link intentionally omitted — not needed in LINE response
+
+    organizer = event.get("organizer", {}).get("displayName") or event.get("organizer", {}).get("email")
+    if organizer:
+        result["organizer"] = organizer
+
+    if event.get("transparency"):
+        result["status"] = "有空" if event["transparency"] == "transparent" else "忙碌"
+
+    if event.get("visibility") and event["visibility"] != "default":
+        result["visibility"] = event["visibility"]
+
+    reminders = event.get("reminders", {})
+    if reminders.get("overrides"):
+        result["reminders"] = [f"{r.get('minutes', 0)}分鐘前（{r.get('method', '')}）" for r in reminders["overrides"]]
+
+    if event.get("recurrence"):
+        result["recurring"] = True
+
     return result
 
 
