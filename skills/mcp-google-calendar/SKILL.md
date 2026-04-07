@@ -2,7 +2,7 @@
 name: mcp-google-calendar
 provider: mcp
 version: 1.0.0
-runtime_requirements: [google-api-python-client, google-auth]
+runtime_requirements: [googleapiclient, google.auth]
 description: >
   Google 日曆管理工具。查詢行程、建立事件、修改事件、刪除事件、查詢空閒時段。
   當使用者提到「行程」「日曆」「排程」「幾點有會」「空閒時間」「安排會議」

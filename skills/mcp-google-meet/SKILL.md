@@ -2,7 +2,7 @@
 name: mcp-google-meet
 provider: mcp
 version: 1.0.0
-runtime_requirements: [google-api-python-client, google-auth]
+runtime_requirements: [googleapiclient, google.auth]
 description: >
   Google Meet 會議連結建立工具。建立即時或排程的 Google Meet 會議，並回傳會議連結。
   當使用者說「開一個 Meet」「建立視訊會議連結」「幫我開 Google Meet」

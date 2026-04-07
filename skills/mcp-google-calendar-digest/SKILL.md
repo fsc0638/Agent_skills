@@ -2,7 +2,7 @@
 name: mcp-google-calendar-digest
 provider: mcp
 version: 1.0.0
-runtime_requirements: [google-api-python-client, google-auth]
+runtime_requirements: [googleapiclient, google.auth]
 description: >
   Google 日曆行程摘要工具。專為定時推播設計，產出格式化的今日/本週行程摘要文字。
   此工具與 mcp-schedule-manager 的 pipeline 類型搭配使用，
