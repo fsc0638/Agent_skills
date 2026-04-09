@@ -11,6 +11,13 @@ description: >
   「更新待辦」「改狀態」「標記完成」「修改todo」
   「刪除任務」「移除待辦」「刪掉那筆」
   「上傳Notion」「寫入Notion」「匯入待辦」時觸發此技能。
+  【必填參數】呼叫此工具時必須傳入 action 參數，可選值：
+  create（新增單筆，需帶 todo_title）、
+  create_batch（批次匯入，需帶 items_json 或 cleaned_text + org_data_json）、
+  list（查詢列表，可帶 filter_status / filter_assignee / filter_project / keyword）、
+  summary（進度摘要，無額外參數）、
+  update（更新欄位，需帶 page_id）、
+  delete（封存刪除，需帶 page_id）。
 parameters:
   type: object
   properties:
