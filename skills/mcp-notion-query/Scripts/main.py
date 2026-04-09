@@ -199,7 +199,10 @@ def action_list(token: str, db_id: str, filter_status: str | None,
     # Clean output: remove internal fields
     clean_items = []
     for item in items:
-        clean = {k: v for k, v in item.items() if not k.startswith("_") and v is not None}
+        clean = {k: v for k, v in item.items() if (not k.startswith("_") or k == "_page_id") and v is not None}
+        # Rename _page_id → page_id for cleaner output
+        if "_page_id" in clean:
+            clean["page_id"] = clean.pop("_page_id")
         clean_items.append(clean)
 
     return {
