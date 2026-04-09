@@ -1,16 +1,9 @@
 ---
 name: mcp-transcribe
-version: 1.0.0
-description: "音訊逐字稿工具。將音訊檔案（MP3、WAV、M4A、FLAC 等）轉換為文字逐字稿，使用 Gemini API 音訊理解能力。當使用者需要將錄音、語音備忘錄或任何音訊檔案轉換為文字時使用。【必填參數】呼叫此工具時必須傳入 file_path 參數，值為音訊檔案的完整絕對路徑（例如：C:/path/to/audio.m4a）。請從使用者訊息中擷取檔案路徑後傳入。"
-parameters:
-  type: object
-  properties:
-    file_path:
-      type: string
-      description: "音訊檔案路徑。支援格式：MP3、WAV、M4A、AAC、FLAC、OGG、OPUS、WEBM。"
-  required: [file_path]
+version: "1.0.0"
+description: >
+  音訊逐字稿工具。將音訊檔案（MP3、WAV、M4A、FLAC 等）轉換為文字逐字稿，使用 Gemini API 音訊理解能力。當使用者需要將錄音、語音備忘錄或任何音訊檔案轉換為文字時使用。【必填參數】呼叫此工具時必須傳入 file_path 參數，值為音訊檔案的完整絕對路徑（例如：C:/path/to/audio.m4a）。請從使用者訊息中擷取檔案路徑後傳入。
 runtime_requirements: [google.genai]
-estimated_tokens: 200
 risk_level: low
 execution_timeout: 120
 ---

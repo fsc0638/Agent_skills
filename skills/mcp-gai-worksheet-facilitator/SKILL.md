@@ -1,43 +1,10 @@
 ---
 name: mcp-gai-worksheet-facilitator
 provider: mcp
-version: 1.0.0
-runtime_requirements: []
+version: "1.0.0"
 description: >
-  GAI 企業應用學習單引導工具。此工具以引導式對話協助學員完成
-  GAI Enterprise Application Worksheet 的 5 個區塊，
-  支援多語言（繁體中文、英文、越南文、日文）。
-  注意：此工具是引導者角色，不直接給答案，而是透過提問激發學員思考。
-  觸發關鍵字（任一語言匹配即觸發）：
-  繁中：「開始學習」「學習單」「填寫學習單」「教育訓練」「企業應用工作坊」「GAI學習」「AI應用學習」「工作坊開始」
-  英文：「start worksheet」「begin worksheet」「learning worksheet」「GAI workshop」「AI training」「start learning」「enterprise AI worksheet」
-  越南文：「bắt đầu học」「bắt đầu bài tập」「phiếu học tập」「bài tập GAI」「học AI」「bắt đầu workshop」「bài tập doanh nghiệp」
-  日文：「学習開始」「ワークシート」「学習シート」「GAI研修」「AI研修」「企業AI研修」「ワークショップ開始」「学習を始める」
-parameters:
-  type: object
-  properties:
-    action:
-      type: string
-      description: >
-        操作類型。
-        start=開始新的學習單引導流程、
-        continue=繼續當前進度、
-        summary=彙整目前填寫成果、
-        export=產出學習成果報告
-      enum: ["start", "continue", "summary", "export"]
-    section:
-      type: integer
-      description: "[continue] 指定跳到第幾個區塊（1-5），不指定則自動接續"
-    language:
-      type: string
-      description: "回應語言偏好。auto=自動偵測使用者語言（預設）"
-      enum: ["auto", "zh-TW", "en", "vi", "ja"]
-    export_format:
-      type: string
-      description: "[export] 輸出格式"
-      enum: ["text", "pdf", "docx"]
-  required: [action]
-estimated_tokens: 12000
+  GAI 企業應用學習單引導工具。此工具以引導式對話協助學員完成 GAI Enterprise Application Worksheet 的 5 個區塊， 支援多語言（繁體中文、英文、越南文、日文）。 注意：此工具是引導者角色，不直接給答案，而是透過提問激發學員思考。 觸發關鍵字（任一語言匹配即觸發）： 繁中：「開始學習」「學習單」「填寫學習單」「教育訓練」「企業應用工作坊」「GAI學習」「AI應用學習」「工作坊開始」 英文：「start worksheet」「begin worksheet」「learning worksheet」「GAI workshop」「AI training」「start learning」「enterprise AI worksheet」 越南文：「bắt đầu học」「bắt đầu bài tập」「phiếu học tập」「bài tập GAI」「học AI」「bắt đầu workshop」「bài tập doanh nghiệp」 日文：「学習開始」「ワークシート」「学習シート」「GAI研修」「AI研修」「企業AI研修」「ワークショップ開始」「学習を始める」
+runtime_requirements: []
 risk_level: low
 ---
 

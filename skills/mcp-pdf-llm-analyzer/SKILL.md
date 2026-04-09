@@ -1,12 +1,9 @@
 ---
 name: mcp-pdf-llm-analyzer
 version: "1.0.0"
-description: "專為直接讀取、分析與重構 PDF 檔案內容所設計的純語意處理技能。當使用者需要：(1) 深度總結、翻譯或萃取長篇文件內容、(2) 解析 PDF 中被拆散的表格數據、(3) 進行合約條文比對、論文重點歸納時，請觸發此技能。本技能完全交由 LLM 直接進行高階文本處理，無須透過任何程式碼執行。"
-parameters:
-  type: object
-  properties: {}
+description: >
+  專為直接讀取、分析與重構 PDF 檔案內容所設計的純語意處理技能。當使用者需要：(1) 深度總結、翻譯或萃取長篇文件內容、(2) 解析 PDF 中被拆散的表格數據、(3) 進行合約條文比對、論文重點歸納時，請觸發此技能。本技能完全交由 LLM 直接進行高階文本處理，無須透過任何程式碼執行。
 runtime_requirements: []
-estimated_tokens: 800
 risk_level: low
 ---
 

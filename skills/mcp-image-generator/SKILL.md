@@ -1,32 +1,10 @@
 ---
 name: mcp-image-generator
 provider: mcp
-version: 1.0.0
-runtime_requirements: [openai]
+version: "1.0.0"
 description: >
-  AI 圖片生成工具。根據使用者的自然語言描述，呼叫 OpenAI gpt-image-1 模型產出插圖或概念圖。
-  當使用者要求「畫一張…」、「生成圖片…」、「製作插圖…」等帶有視覺創作意圖的指令時，必須使用此工具。
-  注意：此工具用於 AI 創意插圖生成，若使用者需要的是數據圖表（長條圖、折線圖、圓餅圖等），
-  請改用 mcp-python-executor 搭配 matplotlib 繪製。
-parameters:
-  type: object
-  properties:
-    prompt:
-      type: string
-      description: >
-        圖片描述提示詞。請使用英文撰寫以獲得最佳品質。
-        若使用者以中文描述，請先翻譯為精確的英文提示詞後再傳入。
-        建議包含：主題、風格、色調、構圖等細節。
-    size:
-      type: string
-      description: "圖片尺寸。可選：1024x1024（預設正方形）、1536x1024（橫向）、1024x1536（直向）"
-      enum: ["1024x1024", "1536x1024", "1024x1536"]
-    quality:
-      type: string
-      description: "圖片品質。low=快速低成本、medium=平衡（預設）、high=最佳品質"
-      enum: ["low", "medium", "high"]
-  required: [prompt]
-estimated_tokens: 200
+  AI 圖片生成工具。根據使用者的自然語言描述，呼叫 OpenAI gpt-image-1 模型產出插圖或概念圖。 當使用者要求「畫一張…」、「生成圖片…」、「製作插圖…」等帶有視覺創作意圖的指令時，必須使用此工具。 注意：此工具用於 AI 創意插圖生成，若使用者需要的是數據圖表（長條圖、折線圖、圓餅圖等）， 請改用 mcp-python-executor 搭配 matplotlib 繪製。
+runtime_requirements: [openai]
 risk_level: low
 execution_timeout: 120
 ---
