@@ -9,6 +9,8 @@ description: >
   當使用者提到「會議紀錄上傳」「逐字稿上傳Notion」「會議待辦上傳」
   「meeting to notion」「會議重點上傳」時觸發此技能。
   本技能為獨立完整的 Pipeline，不依賴其他技能。
+  【重要】呼叫此技能時，必須將使用者訊息中的完整逐字稿或會議記錄文字
+  作為 transcript 參數傳入，不可省略或留空。
 parameters:
   type: object
   properties:
