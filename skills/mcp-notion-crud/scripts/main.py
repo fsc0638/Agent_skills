@@ -135,7 +135,8 @@ def parse_page(page: dict) -> dict:
 # ── Filter Builder ───────────────────────────────────────────────────────────
 
 def build_notion_filter(filter_status: str | None, filter_assignee: str | None,
-                        filter_project: str | None) -> dict | None:
+                        filter_project: str | None, filter_date: str | None,
+                        filter_due_date: str | None) -> dict | None:
     conditions = []
     if filter_status:
         conditions.append({"property": "狀態", "status": {"equals": filter_status}})
@@ -143,6 +144,37 @@ def build_notion_filter(filter_status: str | None, filter_assignee: str | None,
         conditions.append({"property": "負責人 / PM", "multi_select": {"contains": filter_assignee}})
     if filter_project:
         conditions.append({"property": "專案", "multi_select": {"contains": filter_project}})
+    if filter_date:
+        # filter_date supports: "today", "yyyy-mm-dd" (exact date), "yyyy-mm-dd:yyyy-mm-dd" (range)
+        if filter_date.lower() == "today":
+            today = datetime.now().strftime("%Y-%m-%d")
+            conditions.append({"timestamp": "created_time", "created_time": {"on_or_after": today}})
+        elif ":" in filter_date:
+            parts = filter_date.split(":", 1)
+            conditions.append({"timestamp": "created_time", "created_time": {"on_or_after": parts[0].strip()}})
+            # Add 1 day to end date for exclusive upper bound
+            end_dt = datetime.strptime(parts[1].strip(), "%Y-%m-%d") + timedelta(days=1)
+            conditions.append({"timestamp": "created_time", "created_time": {"before": end_dt.strftime("%Y-%m-%d")}})
+        else:
+            conditions.append({"timestamp": "created_time", "created_time": {"on_or_after": filter_date}})
+            end_dt = datetime.strptime(filter_date, "%Y-%m-%d") + timedelta(days=1)
+            conditions.append({"timestamp": "created_time", "created_time": {"before": end_dt.strftime("%Y-%m-%d")}})
+    if filter_due_date:
+        # filter_due_date: "yyyy-mm-dd" (exact), "yyyy-mm-dd:yyyy-mm-dd" (range), "overdue", "upcoming"
+        if filter_due_date.lower() == "overdue":
+            today = datetime.now().strftime("%Y-%m-%d")
+            conditions.append({"property": "到期日", "date": {"before": today}})
+        elif filter_due_date.lower() == "upcoming":
+            today = datetime.now().strftime("%Y-%m-%d")
+            week_later = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+            conditions.append({"property": "到期日", "date": {"on_or_after": today}})
+            conditions.append({"property": "到期日", "date": {"on_or_before": week_later}})
+        elif ":" in filter_due_date:
+            parts = filter_due_date.split(":", 1)
+            conditions.append({"property": "到期日", "date": {"on_or_after": parts[0].strip()}})
+            conditions.append({"property": "到期日", "date": {"on_or_before": parts[1].strip()}})
+        else:
+            conditions.append({"property": "到期日", "date": {"equals": filter_due_date}})
     if not conditions:
         return None
     if len(conditions) == 1:
@@ -575,9 +607,12 @@ def action_create_batch(token: str, db_id: str, items_json: str | None,
 
 def action_list(token: str, db_id: str, filter_status: str | None,
                 filter_assignee: str | None, filter_project: str | None,
-                keyword: str | None, limit: int) -> dict:
+                keyword: str | None, limit: int,
+                filter_date: str | None = None,
+                filter_due_date: str | None = None) -> dict:
     """List todo items with filters."""
-    notion_filter = build_notion_filter(filter_status, filter_assignee, filter_project)
+    notion_filter = build_notion_filter(filter_status, filter_assignee, filter_project,
+                                        filter_date, filter_due_date)
     pages = query_database(token, db_id, filter_obj=notion_filter)
     items = [parse_page(p) for p in pages]
 
@@ -756,6 +791,8 @@ def main():
                 filter_project=os.getenv("SKILL_PARAM_FILTER_PROJECT", "").strip() or None,
                 keyword=os.getenv("SKILL_PARAM_KEYWORD", "").strip() or None,
                 limit=limit,
+                filter_date=os.getenv("SKILL_PARAM_FILTER_DATE", "").strip() or None,
+                filter_due_date=os.getenv("SKILL_PARAM_FILTER_DUE_DATE", "").strip() or None,
             )
 
         elif action == "summary":

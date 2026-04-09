@@ -14,7 +14,8 @@ description: >
   【必填參數】呼叫此工具時必須傳入 action 參數，可選值：
   create（新增單筆，需帶 todo_title）、
   create_batch（批次匯入，需帶 items_json 或 cleaned_text + org_data_json）、
-  list（查詢列表，可帶 filter_status / filter_assignee / filter_project / keyword）、
+  list（查詢列表，可帶 filter_status / filter_assignee / filter_project / keyword / filter_date，
+  例如查今天建立的項目請用 filter_date="today"）、
   summary（進度摘要，無額外參數）、
   update（更新欄位，需帶 page_id）、
   delete（封存刪除，需帶 page_id）。
@@ -84,6 +85,19 @@ parameters:
     filter_project:
       type: string
       description: "篩選專案名稱（模糊匹配）。action=list 時選填。"
+    filter_date:
+      type: string
+      description: >
+        篩選建立時間。action=list 時選填。
+        可選值：「today」=今天建立的、「yyyy-mm-dd」=指定日期、
+        「yyyy-mm-dd:yyyy-mm-dd」=日期範圍。
+        當使用者說「今天的」「今天建立的」「最近新增的」時使用此參數。
+    filter_due_date:
+      type: string
+      description: >
+        篩選到期日。action=list 時選填。
+        可選值：「overdue」=已逾期、「upcoming」=未來7天到期、
+        「yyyy-mm-dd」=指定到期日、「yyyy-mm-dd:yyyy-mm-dd」=到期日範圍。
     keyword:
       type: string
       description: "關鍵字搜尋，在 ToDo 標題中匹配。action=list 時選填。"
