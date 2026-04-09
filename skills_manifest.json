@@ -39,12 +39,8 @@
         "段落"
       ],
       "runtime_requirements": [],
-      "estimated_tokens": 800,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {}
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-gai-worksheet-facilitator",
@@ -84,50 +80,8 @@
         "越南"
       ],
       "runtime_requirements": [],
-      "estimated_tokens": 12000,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "description": "操作類型。 start=開始新的學習單引導流程、 continue=繼續當前進度、 summary=彙整目前填寫成果、 export=產出學習成果報告\n",
-            "enum": [
-              "start",
-              "continue",
-              "summary",
-              "export"
-            ]
-          },
-          "section": {
-            "type": "integer",
-            "description": "[continue] 指定跳到第幾個區塊（1-5），不指定則自動接續"
-          },
-          "language": {
-            "type": "string",
-            "description": "回應語言偏好。auto=自動偵測使用者語言（預設）",
-            "enum": [
-              "auto",
-              "zh-TW",
-              "en",
-              "vi",
-              "ja"
-            ]
-          },
-          "export_format": {
-            "type": "string",
-            "description": "[export] 輸出格式",
-            "enum": [
-              "text",
-              "pdf",
-              "docx"
-            ]
-          }
-        },
-        "required": [
-          "action"
-        ]
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-google-calendar",
@@ -170,64 +124,8 @@
         "googleapiclient",
         "google.auth"
       ],
-      "estimated_tokens": 100,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "description": "操作類型。 list=列出指定日期範圍的事件、 today=今日行程一覽、 get=取得單一事件詳情、 create=建立新事件、 update=修改既有事件、 delete=刪除事件、 free_busy=查詢空閒時段\n",
-            "enum": [
-              "list",
-              "today",
-              "get",
-              "create",
-              "update",
-              "delete",
-              "free_busy"
-            ]
-          },
-          "title": {
-            "type": "string",
-            "description": "[create/update] 事件標題"
-          },
-          "start": {
-            "type": "string",
-            "description": "[create/update/list/free_busy] 開始時間，ISO 8601 格式含時區，例如 2026-04-07T10:00:00+08:00"
-          },
-          "end": {
-            "type": "string",
-            "description": "[create/update/list/free_busy] 結束時間，ISO 8601 格式。create 時若未指定，預設為 start + 1 小時"
-          },
-          "location": {
-            "type": "string",
-            "description": "[create/update] 地點（選填）"
-          },
-          "description": {
-            "type": "string",
-            "description": "[create/update] 事件描述（選填）"
-          },
-          "attendees": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "[create/update] 受邀者 email 列表（選填）"
-          },
-          "event_id": {
-            "type": "string",
-            "description": "[get/update/delete] Google Calendar event ID"
-          },
-          "max_results": {
-            "type": "integer",
-            "description": "[list] 最多回傳幾筆事件，預設 10"
-          }
-        },
-        "required": [
-          "action"
-        ]
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-groovenauts-meeting-analyst",
@@ -269,36 +167,8 @@
       "runtime_requirements": [
         "docx2pdf"
       ],
-      "estimated_tokens": 12000,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "transcript": {
-            "type": "string",
-            "description": "會議逐字稿內容（可包含日文、英文、中文混合）"
-          },
-          "language": {
-            "type": "string",
-            "description": "輸出語言，依照使用者指定的語言輸出分析結果。若未指定，預設為繁體中文。注意：中文內容會轉譯為日文意圖摘要供日方理解，但整體分析輸出仍以此參數指定的語言為主。",
-            "default": "繁體中文"
-          },
-          "export_format": {
-            "type": "string",
-            "description": "選填。匯出格式，可指定 markdown / docx / pdf / notion。未指定時以 docx 格式直接回覆",
-            "enum": [
-              "markdown",
-              "docx",
-              "pdf",
-              "notion"
-            ],
-            "default": "docx"
-          }
-        },
-        "required": [
-          "transcript"
-        ]
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-high-risk-demo",
@@ -323,17 +193,7 @@
       ],
       "runtime_requirements": [],
       "estimated_tokens": 500,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "target": {
-            "type": "string",
-            "description": "模擬操作目標說明（僅測試用，不會實際刪除任何東西）"
-          }
-        },
-        "required": []
-      }
+      "requires_venv": false
     },
     {
       "id": "mcp-image-generator",
@@ -375,38 +235,8 @@
       "runtime_requirements": [
         "openai"
       ],
-      "estimated_tokens": 200,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "圖片描述提示詞。請使用英文撰寫以獲得最佳品質。 若使用者以中文描述，請先翻譯為精確的英文提示詞後再傳入。 建議包含：主題、風格、色調、構圖等細節。\n"
-          },
-          "size": {
-            "type": "string",
-            "description": "圖片尺寸。可選：1024x1024（預設正方形）、1536x1024（橫向）、1024x1536（直向）",
-            "enum": [
-              "1024x1024",
-              "1536x1024",
-              "1024x1536"
-            ]
-          },
-          "quality": {
-            "type": "string",
-            "description": "圖片品質。low=快速低成本、medium=平衡（預設）、high=最佳品質",
-            "enum": [
-              "low",
-              "medium",
-              "high"
-            ]
-          }
-        },
-        "required": [
-          "prompt"
-        ]
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-meeting-to-notion",
@@ -449,33 +279,8 @@
         "requests",
         "openai"
       ],
-      "estimated_tokens": 1200,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "transcript": {
-            "type": "string",
-            "description": "會議逐字稿內容（純文字）。可為使用者直接輸入的文字、或從上傳檔案中提取的內容。"
-          },
-          "language": {
-            "type": "string",
-            "description": "目標輸出語言，預設繁體中文",
-            "default": "繁體中文"
-          },
-          "department_code": {
-            "type": "string",
-            "description": "選填。指定責任部門代碼（如 Y200、T251），會覆蓋 AI 自動判斷結果"
-          },
-          "meeting_date": {
-            "type": "string",
-            "description": "選填。會議日期（格式 yyyy-mm-dd 或 yyyymmdd），用於來源欄位前綴。未指定則使用上傳當天日期"
-          }
-        },
-        "required": [
-          "transcript"
-        ]
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-notion-query",
@@ -678,12 +483,8 @@
         "請觸"
       ],
       "runtime_requirements": [],
-      "estimated_tokens": 800,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {}
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-python-executor",
@@ -722,19 +523,7 @@
       ],
       "runtime_requirements": [],
       "estimated_tokens": 500,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string",
-            "description": "要執行的完整 Python 程式碼。使用 print() 輸出結果。"
-          }
-        },
-        "required": [
-          "code"
-        ]
-      }
+      "requires_venv": false
     },
     {
       "id": "mcp-schedule-manager",
@@ -774,109 +563,8 @@
         "必須"
       ],
       "runtime_requirements": [],
-      "estimated_tokens": 50,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "description": "操作類型。add=新增排程、list=列出所有排程、remove=刪除排程、 pause=暫停排程、resume=恢復排程、trigger=立即執行一次\n",
-            "enum": [
-              "add",
-              "list",
-              "remove",
-              "pause",
-              "resume",
-              "trigger"
-            ]
-          },
-          "task_type": {
-            "type": "string",
-            "description": "推送內容類型（僅 add 時需要）。 news=新聞摘要、work_summary=工作項目統整、language=語言詞彙學習、 custom=自訂內容、reminder=一次性提醒、pipeline=複合多技能任務。 【極重要】必須根據下方「類型判定規則」正確選擇，不可隨意使用 custom。\n",
-            "enum": [
-              "news",
-              "work_summary",
-              "language",
-              "custom",
-              "reminder",
-              "pipeline"
-            ]
-          },
-          "name": {
-            "type": "string",
-            "description": "任務名稱，用於顯示。例如「每日科技新聞」「日文N3學習」"
-          },
-          "cron": {
-            "type": "string",
-            "description": "排程時間。支援格式： - 簡單時間：'08:30' 表示每天 08:30 - 工作日：'weekday 09:00' 表示週一到週五 09:00 - 完整 cron：'30 8 * * 1-5' 表示平日 08:30 - 一次性：'once +10m' 表示 10 分鐘後（用於 reminder 或一次性任務） - 間隔循環：'every +10m' 表示每 10 分鐘執行一次（支援任意分鐘數）\n"
-          },
-          "config": {
-            "type": "object",
-            "description": "任務設定，依 task_type 填入對應欄位。絕不可填入未定義的欄位。",
-            "properties": {
-              "topic": {
-                "type": "string",
-                "description": "[適用 news/language] 主題或關鍵字"
-              },
-              "count": {
-                "type": "integer",
-                "description": "[適用 news/language] 數量"
-              },
-              "detail": {
-                "type": "string",
-                "enum": [
-                  "detailed",
-                  "brief",
-                  "normal"
-                ],
-                "description": "[適用 news] 摘要深度"
-              },
-              "extra_instructions": {
-                "type": "string",
-                "description": "[適用 news] 額外需求，例如產出PDF或指定來源"
-              },
-              "days": {
-                "type": "integer",
-                "description": "[適用 work_summary] 統整天數"
-              },
-              "language": {
-                "type": "string",
-                "description": "[適用 language] 語言種類"
-              },
-              "level": {
-                "type": "string",
-                "description": "[適用 language] 難度等級，如 N3"
-              },
-              "prompt": {
-                "type": "string",
-                "description": "[適用 custom] 完整使用者原文"
-              },
-              "message": {
-                "type": "string",
-                "description": "[適用 reminder] 提醒內容"
-              },
-              "output_format": {
-                "type": "string",
-                "enum": [
-                  "text",
-                  "pdf",
-                  "docx"
-                ],
-                "description": "[所有類型適用] 指定輸出格式。提到「PDF/下載/檔案」→ pdf；提到「Word/docx」→ docx；其他留空（預設 text）"
-              }
-            },
-            "additionalProperties": false
-          },
-          "task_id": {
-            "type": "string",
-            "description": "任務 ID（remove/pause/resume/trigger 時需要）"
-          }
-        },
-        "required": [
-          "action"
-        ]
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-spreadsheet-llm-analyzer",
@@ -916,12 +604,8 @@
         "將非"
       ],
       "runtime_requirements": [],
-      "estimated_tokens": 800,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {}
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-transcribe",
@@ -963,20 +647,8 @@
       "runtime_requirements": [
         "google.genai"
       ],
-      "estimated_tokens": 200,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "file_path": {
-            "type": "string",
-            "description": "音訊檔案路徑。支援格式：MP3、WAV、M4A、AAC、FLAC、OGG、OPUS、WEBM。"
-          }
-        },
-        "required": [
-          "file_path"
-        ]
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-txt-llm-analyzer",
@@ -1016,12 +688,8 @@
         "與潤飾"
       ],
       "runtime_requirements": [],
-      "estimated_tokens": 800,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {}
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-web-search",
@@ -1050,36 +718,7 @@
       ],
       "runtime_requirements": [],
       "estimated_tokens": 500,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "query": {
-            "type": "string",
-            "description": "搜尋關鍵字。若有 target_url，此處可留空或作為輔助資訊。"
-          },
-          "target_url": {
-            "type": "string",
-            "description": "選填。若使用者提供完整網址 (https://...)，請務必將其填送至此參數，以進行精準網頁讀取而非模糊搜尋。"
-          },
-          "search_depth": {
-            "type": "string",
-            "enum": [
-              "basic",
-              "advanced"
-            ],
-            "description": "搜尋深度。預設為 basic。只有使用者明確要求『深度研究』或『詳細分析』時才使用 advanced。"
-          },
-          "include_domains": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "選填。限制搜尋範圍至特定網域清單，例如 ['udn.com', 'ltn.com.tw']。用於地區偏好或來源過濾。"
-          }
-        },
-        "required": []
-      }
+      "requires_venv": false
     }
   ]
 }

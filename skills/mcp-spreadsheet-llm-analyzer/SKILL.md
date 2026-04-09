@@ -1,12 +1,9 @@
 ---
 name: mcp-spreadsheet-llm-analyzer
 version: "1.0.0"
-description: "專為直接讀取、分析與重構 Excel (.xlsx) 與 CSV 檔案內容所設計的純數據邏輯技能。當使用者需要：(1) 總結數據趨勢與商業洞察、(2) 跨欄位邏輯交叉比對、(3) 尋找異常值或特定條件的資料列、(4) 將非結構化資料整理為標準表格時，請觸發此技能。本技能完全交由 LLM 進行高階數據與邏輯分析。"
-parameters:
-  type: object
-  properties: {}
+description: >
+  專為直接讀取、分析與重構 Excel (.xlsx) 與 CSV 檔案內容所設計的純數據邏輯技能。當使用者需要：(1) 總結數據趨勢與商業洞察、(2) 跨欄位邏輯交叉比對、(3) 尋找異常值或特定條件的資料列、(4) 將非結構化資料整理為標準表格時，請觸發此技能。本技能完全交由 LLM 進行高階數據與邏輯分析。
 runtime_requirements: []
-estimated_tokens: 800
 risk_level: low
 ---
 

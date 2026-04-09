@@ -1,12 +1,9 @@
 ---
 name: mcp-txt-llm-analyzer
 version: "1.0.0"
-description: "專為直接讀取、分析與重構純文字 (.txt, .md, .log, .json, .js, .py) 檔案內容所設計的純語意處理技能。當使用者需要：(1) 系統日誌 (Log) 錯誤排查、(2) 長篇草稿排版與潤飾、(3) 快速文字轉換、翻譯或 JSON/XML 結構解析時，請觸發此技能。本技能完全交由 LLM 進行模式識別與重構。"
-parameters:
-  type: object
-  properties: {}
+description: >
+  專為直接讀取、分析與重構純文字 (.txt, .md, .log, .json, .js, .py) 檔案內容所設計的純語意處理技能。當使用者需要：(1) 系統日誌 (Log) 錯誤排查、(2) 長篇草稿排版與潤飾、(3) 快速文字轉換、翻譯或 JSON/XML 結構解析時，請觸發此技能。本技能完全交由 LLM 進行模式識別與重構。
 runtime_requirements: []
-estimated_tokens: 800
 risk_level: low
 ---
 

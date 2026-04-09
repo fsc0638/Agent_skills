@@ -1,85 +1,10 @@
 ---
 name: mcp-schedule-manager
 provider: mcp
-version: 1.7.0
-runtime_requirements: []
+version: "1.7.0"
 description: >
-  定時推送與提醒管理工具。當使用者要求「每天早上推送新聞」、「每週五下班前提醒我」、
-  「定時推送工作摘要」、「幫我設定排程」、「取消推送」等帶有時間排程意圖的指令時，
-  必須使用此工具。此工具可新增、列出、刪除、暫停及恢復排程任務。
-  支援類型：news（新聞摘要）、work_summary（工作重點）、language（語言學習）、custom（自訂內容）、pipeline（複合多技能任務）。
-  注意：一次性提醒（如「10分鐘後提醒我」）也使用此工具，type 設為 reminder。
-parameters:
-  type: object
-  properties:
-    action:
-      type: string
-      description: >
-        操作類型。add=新增排程、list=列出所有排程、remove=刪除排程、
-        pause=暫停排程、resume=恢復排程、trigger=立即執行一次
-      enum: ["add", "list", "remove", "pause", "resume", "trigger"]
-    task_type:
-      type: string
-      description: >
-        推送內容類型（僅 add 時需要）。
-        news=新聞摘要、work_summary=工作項目統整、language=語言詞彙學習、
-        custom=自訂內容、reminder=一次性提醒、pipeline=複合多技能任務。
-        【極重要】必須根據下方「類型判定規則」正確選擇，不可隨意使用 custom。
-      enum: ["news", "work_summary", "language", "custom", "reminder", "pipeline"]
-    name:
-      type: string
-      description: "任務名稱，用於顯示。例如「每日科技新聞」「日文N3學習」"
-    cron:
-      type: string
-      description: >
-        排程時間。支援格式：
-        - 簡單時間：'08:30' 表示每天 08:30
-        - 工作日：'weekday 09:00' 表示週一到週五 09:00
-        - 完整 cron：'30 8 * * 1-5' 表示平日 08:30
-        - 一次性：'once +10m' 表示 10 分鐘後（用於 reminder 或一次性任務）
-        - 間隔循環：'every +10m' 表示每 10 分鐘執行一次（支援任意分鐘數）
-    config:
-      type: object
-      description: "任務設定，依 task_type 填入對應欄位。絕不可填入未定義的欄位。"
-      properties:
-        topic:
-          type: string
-          description: "[適用 news/language] 主題或關鍵字"
-        count:
-          type: integer
-          description: "[適用 news/language] 數量"
-        detail:
-          type: string
-          enum: ["detailed", "brief", "normal"]
-          description: "[適用 news] 摘要深度"
-        extra_instructions:
-          type: string
-          description: "[適用 news] 額外需求，例如產出PDF或指定來源"
-        days:
-          type: integer
-          description: "[適用 work_summary] 統整天數"
-        language:
-          type: string
-          description: "[適用 language] 語言種類"
-        level:
-          type: string
-          description: "[適用 language] 難度等級，如 N3"
-        prompt:
-          type: string
-          description: "[適用 custom] 完整使用者原文"
-        message:
-          type: string
-          description: "[適用 reminder] 提醒內容"
-        output_format:
-          type: string
-          enum: ["text", "pdf", "docx"]
-          description: "[所有類型適用] 指定輸出格式。提到「PDF/下載/檔案」→ pdf；提到「Word/docx」→ docx；其他留空（預設 text）"
-      additionalProperties: false
-    task_id:
-      type: string
-      description: "任務 ID（remove/pause/resume/trigger 時需要）"
-  required: [action]
-estimated_tokens: 50
+  定時推送與提醒管理工具。當使用者要求「每天早上推送新聞」、「每週五下班前提醒我」、 「定時推送工作摘要」、「幫我設定排程」、「取消推送」等帶有時間排程意圖的指令時， 必須使用此工具。此工具可新增、列出、刪除、暫停及恢復排程任務。 支援類型：news（新聞摘要）、work_summary（工作重點）、language（語言學習）、custom（自訂內容）、pipeline（複合多技能任務）。 注意：一次性提醒（如「10分鐘後提醒我」）也使用此工具，type 設為 reminder。
+runtime_requirements: []
 risk_level: low
 execution_timeout: 10
 ---

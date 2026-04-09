@@ -1,18 +1,10 @@
 ---
 name: mcp-python-executor
 provider: mcp
-version: 1.0.0
-runtime_requirements: []
+version: "1.0.0"
 description: >
-  強大的 Python 程式碼執行工具。強制規定：不得只在文字中提供程式碼；當使用者要求執行計算、驗證結果或執行腳本時，必須使用此工具實際執行程式碼。
-  LLM（大腦）須提供原始 Python 程式碼，並以此工具作為與系統邏輯互動的主要方式。
-parameters:
-  type: object
-  properties:
-    code:
-      type: string
-      description: 要執行的完整 Python 程式碼。使用 print() 輸出結果。
-  required: [code]
+  強大的 Python 程式碼執行工具。強制規定：不得只在文字中提供程式碼；當使用者要求執行計算、驗證結果或執行腳本時，必須使用此工具實際執行程式碼。 LLM（大腦）須提供原始 Python 程式碼，並以此工具作為與系統邏輯互動的主要方式。
+runtime_requirements: []
 ---
 
 # MCP Python Executor（Python 執行工具）

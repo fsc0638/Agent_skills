@@ -1,59 +1,10 @@
 ---
 name: mcp-google-calendar
 provider: mcp
-version: 1.0.0
-runtime_requirements: [googleapiclient, google.auth]
+version: "1.0.0"
 description: >
-  Google 日曆管理工具。查詢行程、建立事件、修改事件、刪除事件、查詢空閒時段。
-  當使用者提到「行程」「日曆」「幾點有會」「空閒時間」「安排會議」「建立事件」「取消會議」等意圖時使用此工具。
-  【參數用法】action 必填：today=今日行程、list=指定日期範圍（需帶 start/end，ISO 格式如 2026-04-25T00:00:00+08:00）、
-  create=建立事件（需 title/start/end）、update=修改（需 event_id）、delete=刪除（需 event_id）、free_busy=查空閒（需 start/end）。
-  查「X月底行程」→ 用 action=list + start/end；查「今天行程」→ 用 action=today。
-  注意：若使用者要求「開 Google Meet 連結」，請改用 mcp-google-meet。
-  若使用者要求「提醒我」但不涉及日曆事件，請改用 mcp-schedule-manager。
-parameters:
-  type: object
-  properties:
-    action:
-      type: string
-      description: >
-        操作類型。
-        list=列出指定日期範圍的事件、
-        today=今日行程一覽、
-        get=取得單一事件詳情、
-        create=建立新事件、
-        update=修改既有事件、
-        delete=刪除事件、
-        free_busy=查詢空閒時段
-      enum: ["list", "today", "get", "create", "update", "delete", "free_busy"]
-    title:
-      type: string
-      description: "[create/update] 事件標題"
-    start:
-      type: string
-      description: "[create/update/list/free_busy] 開始時間，ISO 8601 格式含時區，例如 2026-04-07T10:00:00+08:00"
-    end:
-      type: string
-      description: "[create/update/list/free_busy] 結束時間，ISO 8601 格式。create 時若未指定，預設為 start + 1 小時"
-    location:
-      type: string
-      description: "[create/update] 地點（選填）"
-    description:
-      type: string
-      description: "[create/update] 事件描述（選填）"
-    attendees:
-      type: array
-      items:
-        type: string
-      description: "[create/update] 受邀者 email 列表（選填）"
-    event_id:
-      type: string
-      description: "[get/update/delete] Google Calendar event ID"
-    max_results:
-      type: integer
-      description: "[list] 最多回傳幾筆事件，預設 10"
-  required: [action]
-estimated_tokens: 100
+  Google 日曆管理工具。查詢行程、建立事件、修改事件、刪除事件、查詢空閒時段。 當使用者提到「行程」「日曆」「幾點有會」「空閒時間」「安排會議」「建立事件」「取消會議」等意圖時使用此工具。 【參數用法】action 必填：today=今日行程、list=指定日期範圍（需帶 start/end，ISO 格式如 2026-04-25T00:00:00+08:00）、 create=建立事件（需 title/start/end）、update=修改（需 event_id）、delete=刪除（需 event_id）、free_busy=查空閒（需 start/end）。 查「X月底行程」→ 用 action=list + start/end；查「今天行程」→ 用 action=today。 注意：若使用者要求「開 Google Meet 連結」，請改用 mcp-google-meet。 若使用者要求「提醒我」但不涉及日曆事件，請改用 mcp-schedule-manager。
+runtime_requirements: [googleapiclient, google.auth]
 risk_level: low
 execution_timeout: 30
 ---
