@@ -1,7 +1,5 @@
 ---
-
 name: mcp-image-generator
-display_name: "圖像生成"
 provider: mcp
 version: "1.0.0"
 description: >
@@ -9,12 +7,7 @@ description: >
 runtime_requirements: [openai]
 risk_level: low
 execution_timeout: 120
-recommended_models:
-  openai: gpt-4.1-nano
-  gemini: gemini-2.0-flash
-  claude: claude-haiku-4-5
 ---
-
 
 # MCP Image Generator（AI 圖片生成工具）
 
