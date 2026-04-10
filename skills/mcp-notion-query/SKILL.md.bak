@@ -1,4 +1,5 @@
 ---
+
 name: mcp-notion-query
 display_name: "查詢 Notion ToDo 資料庫工具"
 provider: mcp
@@ -12,6 +13,7 @@ recommended_models:
   gemini: gemini-2.0-flash
   claude: claude-haiku-4-5
 ---
+
 
 # Notion ToDo 查詢工具 (mcp-notion-query)
 

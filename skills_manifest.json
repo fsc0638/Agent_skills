@@ -242,7 +242,7 @@
       "id": "mcp-meeting-to-notion",
       "name": "mcp-meeting-to-notion",
       "version": "1.0.0",
-      "description": "會議紀錄自動上傳 Notion 工具。將會議逐字稿經過 4 階段 AI 處理 （文本清洗→人員歸戶→Schema映射→品質檢核），自動產出結構化 ToDo 並上傳至 Notion 資料庫。支援 Upsert（重複項目自動更新）。 當使用者提到「會議紀錄上傳」「逐字稿上傳Notion」「會議待辦上傳」 「meeting to notion」「會議重點上傳」時觸發此技能。 本技能為獨立完整的 Pipeline，不依賴其他技能。 【重要】呼叫此技能時，必須將使用者訊息中的完整逐字稿或會議記錄文字 作為 transcript 參數傳入，不可省略或留空。",
+      "description": "會議紀錄自動上傳 Notion 工具。將會議逐字稿經過 4 階段 AI 處理 （文本清洗→人員歸戶→Schema映射→品質檢核），自動產出結構化 ToDo 並上傳至 Notion 資料庫。支援 Upsert（重複項目自動更新）。 當使用者提到「會議紀錄上傳」「逐字稿上傳Notion」「會議待辦上傳」 「meeting to notion」「會議重點上傳」時觸發此技能。 本技能為獨立完整的 Pipeline，不依賴其他技能。",
       "tags": [
         "mcp",
         "meeting",
@@ -252,7 +252,6 @@
         "todo",
         "upsert",
         "pipeline",
-        "transcript",
         "會議",
         "紀錄",
         "自動",
@@ -273,7 +272,8 @@
         "資料",
         "支援",
         "項目",
-        "更新"
+        "更新",
+        "使用者"
       ],
       "runtime_requirements": [
         "requests",
@@ -322,44 +322,8 @@
       "runtime_requirements": [
         "requests"
       ],
-      "estimated_tokens": 800,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "description": "查詢動作類型。 list: 列出待辦事項（可搭配篩選條件）； summary: 產出整體進度摘要（各狀態數量統計）。\n",
-            "enum": [
-              "list",
-              "summary"
-            ],
-            "default": "list"
-          },
-          "filter_status": {
-            "type": "string",
-            "description": "篩選狀態：未開始、進行中、已完成。留空表示不篩選。"
-          },
-          "filter_assignee": {
-            "type": "string",
-            "description": "篩選負責人名稱（模糊匹配）。留空表示不篩選。"
-          },
-          "filter_project": {
-            "type": "string",
-            "description": "篩選專案名稱（模糊匹配）。留空表示不篩選。"
-          },
-          "keyword": {
-            "type": "string",
-            "description": "關鍵字搜尋，會在 ToDo 標題中進行匹配。留空表示不篩選。"
-          },
-          "limit": {
-            "type": "integer",
-            "description": "回傳筆數上限，預設 20，最大 100。",
-            "default": 20
-          }
-        },
-        "required": []
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-notion-todo-edit",
@@ -401,49 +365,8 @@
       "runtime_requirements": [
         "requests"
       ],
-      "estimated_tokens": 600,
-      "requires_venv": false,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "description": "操作類型。 update: 更新指定頁面的欄位（僅更新有傳入的欄位，其餘不動）； delete: 封存（軟刪除）指定頁面，可在 Notion 中還原。\n",
-            "enum": [
-              "update",
-              "delete"
-            ]
-          },
-          "page_id": {
-            "type": "string",
-            "description": "Notion 頁面 ID，從 mcp-notion-query 查詢結果的 page_id 欄位取得。"
-          },
-          "status": {
-            "type": "string",
-            "description": "更新狀態。可選值：未開始、進行中、已完成。僅 action=update 時有效。"
-          },
-          "assignee": {
-            "type": "string",
-            "description": "更新負責人名稱（會取代現有負責人）。僅 action=update 時有效。"
-          },
-          "due_date": {
-            "type": "string",
-            "description": "更新到期日，格式 yyyy-mm-dd。僅 action=update 時有效。"
-          },
-          "project": {
-            "type": "string",
-            "description": "更新專案名稱。僅 action=update 時有效。"
-          },
-          "todo_title": {
-            "type": "string",
-            "description": "更新 ToDo 標題文字。僅 action=update 時有效。"
-          }
-        },
-        "required": [
-          "action",
-          "page_id"
-        ]
-      }
+      "estimated_tokens": 500,
+      "requires_venv": false
     },
     {
       "id": "mcp-pdf-llm-analyzer",

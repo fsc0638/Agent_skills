@@ -7,7 +7,7 @@ description: >
 runtime_requirements: []
 risk_level: low
 recommended_models:
-  openai: gpt-4.1
+  openai: gpt-4.1-nano
   gemini: gemini-2.0-flash
   claude: claude-haiku-4-5
 ---
@@ -16,7 +16,7 @@ recommended_models:
 
 ## 說明
 此工具使用 Tavily API 進行即時網路搜尋或單一網頁內容提取。
-
+ 
 ## 核心規則
 1. **網址優先**：如果使用者輸入的是一個連結，請務必將該連結放入 `target_url` 參數。
 2. **防護機制**：後台已實作 Token 保護，每個網頁僅獲取前 2000 字元，避免超出上下文上限。
