@@ -566,12 +566,12 @@ def action_create_batch(token: str, db_id: str, items_json: str | None,
 
     if items_json:
         # Direct JSON input — skip Phase 3
-        items = json.loads(items_json) if isinstance(items_json, str) else items_json
+        items = extract_json(items_json) if isinstance(items_json, str) else items_json
         if not isinstance(items, list):
             items = [items]
     elif cleaned_text and org_data_json:
         # Pipeline mode: Phase 3 Schema Mapping
-        org_data = json.loads(org_data_json) if isinstance(org_data_json, str) else org_data_json
+        org_data = extract_json(org_data_json) if isinstance(org_data_json, str) else org_data_json
         items = phase3_schema_map(cleaned_text, org_data, language, source_options,
                                   base_date_compact, base_date_iso)
     else:
