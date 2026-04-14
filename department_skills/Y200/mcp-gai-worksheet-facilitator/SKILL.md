@@ -1,6 +1,6 @@
 ---
-
 name: mcp-gai-worksheet-facilitator
+skillk_id: SkillK_nlGJcDQZ0h4RqhPKIow7
 display_name: "GAI 學習單"
 category: Department
 provider: mcp
@@ -14,7 +14,6 @@ recommended_models:
   gemini: gemini-2.0-flash
   claude: claude-sonnet-4-6
 ---
-
 
 # GAI Enterprise Application Worksheet Facilitator
 
