@@ -1,6 +1,8 @@
 ---
 name: mcp-web-search
+skillk_id: SkillK_EfhXruaQ2sGCoexdp2wc
 display_name: "網路搜尋"
+category: System
 version: "1.0.0"
 description: >
   全網搜尋與精準網頁內容擷取工具 (Tavily 驅動)。當需要獲取即時網路資訊或分析特定網址內容時使用。
