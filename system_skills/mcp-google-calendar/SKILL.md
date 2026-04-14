@@ -1,7 +1,7 @@
 ---
 name: mcp-google-calendar
 display_name: "Google 日曆"
-category: System
+category: Department
 provider: mcp
 version: "1.0.0"
 description: >
