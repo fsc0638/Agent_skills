@@ -1,6 +1,6 @@
 ---
 name: mcp-google-calendar
-skillk_id: SkillK_Ryu0uy2V4rqyR31FXPhg
+skillk_id: SkillK_7JO6GRm0gRdnyFEsi6yI
 display_name: "Google 日曆"
 category: Department
 provider: mcp
