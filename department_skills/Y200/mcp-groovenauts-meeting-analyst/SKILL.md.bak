@@ -1,6 +1,7 @@
 ---
 name: mcp-groovenauts-meeting-analyst
 display_name: "groovenauts會議記錄統整工具"
+category: Department
 provider: mcp
 version: "1.1.0"
 description: >

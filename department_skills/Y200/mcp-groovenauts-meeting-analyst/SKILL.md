@@ -1,5 +1,6 @@
 ---
 name: mcp-groovenauts-meeting-analyst
+skillk_id: SkillK_zcm23rtWF9sWlLKoZQ0T
 display_name: "groovenauts會議記錄統整工具"
 category: Department
 provider: mcp
