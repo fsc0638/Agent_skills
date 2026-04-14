@@ -1,7 +1,7 @@
 ---
-
 name: mcp-image-generator
 display_name: "圖像生成"
+category: Personal
 provider: mcp
 version: "1.0.0"
 description: >
@@ -14,7 +14,6 @@ recommended_models:
   gemini: gemini-2.0-flash
   claude: claude-haiku-4-5
 ---
-
 
 # MCP Image Generator（AI 圖片生成工具）
 

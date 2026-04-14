@@ -1,5 +1,6 @@
 ---
 name: mcp-image-generator
+skillk_id: SkillK_584SKIRqq1EjMQOOedTZ
 display_name: "圖像生成"
 category: Personal
 provider: mcp
