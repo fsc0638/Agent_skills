@@ -1,6 +1,6 @@
 ---
-
 name: mcp-transcribe
+skillk_id: SkillK_65vunM5E2YeXIgNzReir
 display_name: "音訊逐字稿工具"
 category: Department
 version: "1.0.0"
@@ -14,7 +14,6 @@ recommended_models:
   gemini: gemini-2.0-flash
   claude: claude-haiku-4-5
 ---
-
 
 # Transcribe（音訊逐字稿）
 
