@@ -1,12 +1,9 @@
 ---
 name: mcp-docx-llm-analyzer
 version: "1.0.0"
-description: "專為直接讀取、分析與重構 Word (.docx) 檔案內容所設計的純語意處理技能。當使用者需要：(1) 深度總結、翻譯或萃取文件與表格內容、(2) 進行上下文語意比對與錯漏字校對、(3) 擷取特定段落進行改寫、(4) 將非結構化文件重新排版為精美的 Markdown 或標準化格式時，請觸發此技能。本技能完全交由 LLM 直接進行高階文本處理，無須透過任何程式碼執行。"
-parameters:
-  type: object
-  properties: {}
+description: >
+  專為直接讀取、分析與重構 Word (.docx) 檔案內容所設計的純語意處理技能。當使用者需要：(1) 深度總結、翻譯或萃取文件與表格內容、(2) 進行上下文語意比對與錯漏字校對、(3) 擷取特定段落進行改寫、(4) 將非結構化文件重新排版為精美的 Markdown 或標準化格式時，請觸發此技能。本技能完全交由 LLM 直接進行高階文本處理，無須透過任何程式碼執行。
 runtime_requirements: []
-estimated_tokens: 800
 risk_level: low
 ---
 
