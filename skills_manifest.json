@@ -322,7 +322,7 @@
         "requests",
         "openai"
       ],
-      "estimated_tokens": 1000,
+      "estimated_tokens": 500,
       "requires_venv": false
     },
     {
