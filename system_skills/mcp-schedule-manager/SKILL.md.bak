@@ -1,9 +1,5 @@
 ---
-
 name: mcp-schedule-manager
-skillk_id: SkillK_Fi8Y5otmQjOxITW1fFyQ
-display_name: "排程管理"
-category: System
 provider: mcp
 version: "1.7.0"
 description: >
@@ -11,12 +7,7 @@ description: >
 runtime_requirements: []
 risk_level: low
 execution_timeout: 10
-recommended_models:
-  openai: gpt-4.1-mini
-  gemini: gemini-2.0-flash
-  claude: claude-sonnet-4-6
 ---
-
 
 # MCP Schedule Manager（定時推送與提醒管理）
 
