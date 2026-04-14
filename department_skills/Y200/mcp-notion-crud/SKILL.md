@@ -1,7 +1,7 @@
 ---
 name: mcp-notion-crud
 display_name: "Notion ToDo 資料庫完整操作工具"
-category: System
+category: Department
 provider: mcp
 version: "1.0.0"
 description: >
