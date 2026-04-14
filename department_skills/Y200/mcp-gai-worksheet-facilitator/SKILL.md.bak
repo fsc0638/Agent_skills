@@ -1,20 +1,12 @@
 ---
-
 name: mcp-gai-worksheet-facilitator
-display_name: "GAI 學習單"
-category: Department
 provider: mcp
 version: "1.0.0"
 description: >
   GAI 企業應用學習單引導工具。此工具以引導式對話協助學員完成 GAI Enterprise Application Worksheet 的 5 個區塊， 支援多語言（繁體中文、英文、越南文、日文）。 注意：此工具是引導者角色，不直接給答案，而是透過提問激發學員思考。 觸發關鍵字（任一語言匹配即觸發）： 繁中：「開始學習」「學習單」「填寫學習單」「教育訓練」「企業應用工作坊」「GAI學習」「AI應用學習」「工作坊開始」 英文：「start worksheet」「begin worksheet」「learning worksheet」「GAI workshop」「AI training」「start learning」「enterprise AI worksheet」 越南文：「bắt đầu học」「bắt đầu bài tập」「phiếu học tập」「bài tập GAI」「học AI」「bắt đầu workshop」「bài tập doanh nghiệp」 日文：「学習開始」「ワークシート」「学習シート」「GAI研修」「AI研修」「企業AI研修」「ワークショップ開始」「学習を始める」
 runtime_requirements: []
 risk_level: low
-recommended_models:
-  openai: gpt-4.1
-  gemini: gemini-2.0-flash
-  claude: claude-sonnet-4-6
 ---
-
 
 # GAI Enterprise Application Worksheet Facilitator
 
