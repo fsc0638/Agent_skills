@@ -1,11 +1,19 @@
 ---
+
 name: mcp-python-executor
+display_name: "Python 執行"
 provider: mcp
 version: "1.0.0"
 description: >
   強大的 Python 程式碼執行工具。強制規定：不得只在文字中提供程式碼；當使用者要求執行計算、驗證結果或執行腳本時，必須使用此工具實際執行程式碼。 LLM（大腦）須提供原始 Python 程式碼，並以此工具作為與系統邏輯互動的主要方式。
 runtime_requirements: []
+risk_level: low
+recommended_models:
+  openai: gpt-4.1-nano
+  gemini: gemini-2.0-flash
+  claude: claude-haiku-4-5
 ---
+
 
 # MCP Python Executor（Python 執行工具）
 
