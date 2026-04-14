@@ -1,7 +1,7 @@
 ---
-
 name: mcp-meeting-analyzer
 display_name: "會議逐字稿結構化"
+category: Department
 provider: mcp
 version: "1.0.0"
 description: >
@@ -14,7 +14,6 @@ recommended_models:
   gemini: gemini-2.0-flash
   claude: claude-haiku-4-5
 ---
-
 
 # 會議逐字稿結構化分析工具 (mcp-meeting-analyzer)
 

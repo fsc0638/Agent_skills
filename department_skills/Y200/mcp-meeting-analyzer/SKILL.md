@@ -1,5 +1,6 @@
 ---
 name: mcp-meeting-analyzer
+skillk_id: SkillK_sre9n7BqHIuBJajNWPzi
 display_name: "會議逐字稿結構化"
 category: Department
 provider: mcp
