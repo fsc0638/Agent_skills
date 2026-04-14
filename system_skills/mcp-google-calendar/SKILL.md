@@ -1,7 +1,7 @@
 ---
-
 name: mcp-google-calendar
 display_name: "Google 日曆"
+category: Department
 provider: mcp
 version: "1.0.0"
 description: >
@@ -13,7 +13,6 @@ recommended_models:
   gemini: gemini-2.0-flash
   claude: claude-haiku-4-5
 ---
-
 
 # MCP Google Calendar（Google 日曆管理工具）
 

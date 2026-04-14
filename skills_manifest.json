@@ -574,19 +574,6 @@
       "runtime_requirements": [],
       "estimated_tokens": 500,
       "requires_venv": false
-    },
-    {
-      "id": "dept:Y200:mcp-test",
-      "name": "mcp-test",
-      "version": "1.0.0",
-      "description": "",
-      "tags": [
-        "mcp",
-        "測試"
-      ],
-      "runtime_requirements": [],
-      "estimated_tokens": 500,
-      "requires_venv": false
     }
   ]
 }
