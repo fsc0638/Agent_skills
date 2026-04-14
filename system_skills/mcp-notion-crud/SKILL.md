@@ -1,7 +1,7 @@
 ---
-
 name: mcp-notion-crud
 display_name: "Notion ToDo 資料庫完整操作工具"
+category: System
 provider: mcp
 version: "1.0.0"
 description: >
@@ -16,7 +16,6 @@ recommended_models:
   gemini: gemini-2.0-flash
   claude: claude-haiku-4-5
 ---
-
 
 # Notion ToDo CRUD 工具 (mcp-notion-crud)
 
