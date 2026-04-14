@@ -171,31 +171,6 @@
       "requires_venv": false
     },
     {
-      "id": "mcp-high-risk-demo",
-      "name": "mcp-high-risk-demo",
-      "version": "1.0.0",
-      "description": "[TEST] Phase 3 高風險授權攔截測試技能。 當使用者要求「執行高風險測試」或「demo高風險」時觸發此技能。",
-      "tags": [
-        "mcp",
-        "high",
-        "risk",
-        "demo",
-        "測試",
-        "phase",
-        "高風險",
-        "授權",
-        "攔截",
-        "技能",
-        "使用者",
-        "要求",
-        "時觸",
-        "發此"
-      ],
-      "runtime_requirements": [],
-      "estimated_tokens": 500,
-      "requires_venv": false
-    },
-    {
       "id": "mcp-image-generator",
       "name": "mcp-image-generator",
       "version": "1.0.0",
@@ -595,6 +570,19 @@
         "特定",
         "網址",
         "內容時"
+      ],
+      "runtime_requirements": [],
+      "estimated_tokens": 500,
+      "requires_venv": false
+    },
+    {
+      "id": "dept:Y200:mcp-test",
+      "name": "mcp-test",
+      "version": "1.0.0",
+      "description": "",
+      "tags": [
+        "mcp",
+        "測試"
       ],
       "runtime_requirements": [],
       "estimated_tokens": 500,
