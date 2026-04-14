@@ -1,0 +1,89 @@
+---
+name: mcp-google-calendar
+skillk_id: SkillK_Ryu0uy2V4rqyR31FXPhg
+display_name: "Google 日曆"
+category: Department
+provider: mcp
+version: "1.0.0"
+description: >
+  Google 日曆管理工具。查詢行程、建立事件、修改事件、刪除事件、查詢空閒時段。 當使用者提到「行程」「日曆」「幾點有會」「空閒時間」「安排會議」「建立事件」「取消會議」等意圖時使用此工具。 【參數用法】action 必填：today=今日行程、list=指定日期範圍（需帶 start/end，ISO 格式如 2026-04-25T00:00:00+08:00）、 create=建立事件（需 title/start/end）、update=修改（需 event_id）、delete=刪除（需 event_id）、free_busy=查空閒（需 start/end）。 查「X月底行程」→ 用 action=list + start/end；查「今天行程」→ 用 action=today。 注意：若使用者要求「開 Google Meet 連結」，請改用 mcp-google-meet。 若使用者要求「提醒我」但不涉及日曆事件，請改用 mcp-schedule-manager。
+runtime_requirements: [googleapiclient, google.auth]
+risk_level: low
+recommended_models:
+  openai: gpt-4.1-nano
+  gemini: gemini-2.0-flash
+  claude: claude-haiku-4-5
+---
+
+# MCP Google Calendar（Google 日曆管理工具）
+
+## 說明
+此技能透過 Google Calendar API 管理使用者的日曆事件。
+
+## 使用時機
+- 使用者說「今天有什麼會」「幫我排下週三 10 點開會」「取消明天的 1on1」
+- 使用者說「我下午幾點有空」「查一下行程」
+- 使用者說「安排會議」「建立事件」
+
+## 不適用場景
+- 純提醒（不涉及日曆事件）→ 請用 mcp-schedule-manager
+- 開 Google Meet 連結 → 請用 mcp-google-meet
+- 寄信通知 → 請用 mcp-google-gmail
+
+## 回覆格式（嚴格遵守 — 有值才顯示）
+
+列出行程時**必須使用以下編號格式**，每個事件一個區塊。
+**只顯示 API 回傳中有值的欄位，空值欄位完全不顯示。**
+
+```
+行程有 X 個：
+
+1. {title}
+   日期：{start} 到 {end}          ← 全天事件
+   時間：{start} - {end}            ← 非全天事件（擇一顯示）
+   地點：{location}                 ← 有值才顯示
+   說明：{description}              ← 有值才顯示
+   Meet：{meet_link}               ← 有值才顯示
+   參與者：{attendees}              ← 有值才顯示
+   主辦人：{organizer}              ← 有值才顯示
+   狀態：{status}                   ← 有值才顯示（有空/忙碌）
+   提醒：{reminders}                ← 有值才顯示
+   重複：是                         ← recurring=true 時才顯示
+```
+
+範例（全天 + 有地點，無說明/Meet/參與者）：
+```
+1. 五島
+   日期：4月26日 到 4月29日
+   地點：日本長崎縣五島市
+```
+
+範例（非全天 + 有地點有說明）：
+```
+2. 專案進度檢討
+   時間：14:00 - 15:00
+   地點：3F 會議室
+   說明：Q2 里程碑review
+   狀態：忙碌
+```
+
+**禁止事項**：
+- 不要顯示 event_id
+- 不要自行編造欄位值
+- 不要用 dash (-) 條列，用編號 1. 2. 3.
+
+## 風險分級邏輯
+- `list` / `today` / `get` / `free_busy` → 唯讀操作，自動放行
+- `create` / `update` / `delete` → 寫入操作，觸發 Auth Modal 確認
+
+## 時間基準
+所有時間預設 GMT+8 (Asia/Taipei)，LLM 必須將使用者描述轉為 ISO 8601 格式。
+
+## 輸出格式
+```json
+{"status": "success", "events": [{"event_id": "...", "title": "...", "start": "...", "end": "...", "location": "...", "meet_link": null}]}
+```
+或
+```json
+{"status": "success", "event_id": "...", "html_link": "https://calendar.google.com/..."}
+```
