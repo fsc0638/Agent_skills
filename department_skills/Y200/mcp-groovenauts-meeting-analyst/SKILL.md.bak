@@ -21,7 +21,7 @@ recommended_models:
 
 - **Project Management Professional (PMP®)** — 專案執行與交付
 - **Program Management Professional (PgMP®)** — 跨專案關聯與階段性價值
-- **Portfolio Management Professional (PfMP®)** — 策略適配度與投資判斷訊號
+- **Portfolio Management Professional (PfMP®)** — 策略適配度與投資判斷訊號 
 
 ## 核心任務
 
