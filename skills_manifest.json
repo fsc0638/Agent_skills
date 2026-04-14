@@ -278,7 +278,7 @@
       "runtime_requirements": [
         "openai"
       ],
-      "estimated_tokens": 800,
+      "estimated_tokens": 500,
       "requires_venv": false
     },
     {
