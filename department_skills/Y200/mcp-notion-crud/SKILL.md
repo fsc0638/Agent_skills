@@ -19,10 +19,27 @@ description: >
   create_batch（批次匯入，需帶 items_json 或 cleaned_text + org_data_json）、
   list（查詢列表，可帶 filter_status / filter_assignee / filter_project / keyword / filter_date / filter_due_date / limit / offset）、
   summary（進度摘要，無額外參數）、
+  find_duplicates（找出重複項目並分組，可帶 filter_* / keyword 縮小範圍；dedupe_by 預設 ToDo、keep 預設 oldest，scope_mode 預設 auto）、
   update（更新單筆欄位，帶 page_id 或 keyword 定位）、
   update_batch（條件式批次更新，帶篩選條件 + set_status / set_assignee 等目標值）、
   delete（封存單筆，帶 page_id 或 keyword 定位）、
   delete_batch（條件式批次刪除，帶篩選條件）。
+  【去重流程】當使用者提到「有重複嗎」「幫我刪重複」「清掉重複的」時，
+  第一步必呼叫 action=find_duplicates（套用使用者當下的 filter_* 範圍），
+  取回 groups 與 all_delete_ids；第二步呼叫 action=delete_batch 並把 all_delete_ids 當 page_ids 傳入
+  （先不帶 confirm 取得 preview，再帶 confirm=true 實際執行）。
+  【範圍繼承（強制）】
+  若上一輪剛用 action=list 列出清單，使用者接著問「有哪些重複 / 有沒有重複 / 刪除其中一個」，
+  find_duplicates 必須沿用最近一次 list 的範圍（scope_mode 用 auto 或 list），不得改查整個 Notion。
+  只有當使用者明確提到「重新搜尋」「重新查」「整個 Notion」「全資料庫」時，
+  才可用 scope_mode="global"（或提供新的 filter_*）改為全庫搜尋。
+  嚴禁自行用標題字串推測哪些是重複並把整批項目刪除。
+  【find_duplicates 後的刪除規則 — 強制】
+  只要上一輪 find_duplicates 的結果仍在對話脈絡（groups / delete_suggestion / all_delete_ids 可取得），
+  使用者接著說「刪除其中一個」「刪掉那筆重複的」「刪掉第N組的重複」時，
+  必須直接用 action=delete_batch 搭配 page_ids=[對應的 delete_suggestion page_id] + confirm=true 執行；
+  嚴禁改用 action=delete 搭配 keyword=標題字串去找同一筆（LLM 可能插入多餘空白或序號差異導致 0 筆命中）。
+  若只要刪單一組的其中一筆，從 groups[i].delete_suggestion[0] 取出該 UUID 即可。
   【篩選語法】filter_status 支援 "not:已完成"（排除）；
   filter_date 支援 "before:2026-04-15"（之前）、"after:2026-04-15"（之後含當日）；
   filter_due_date 同樣支援 before:/after: 語法；
@@ -83,6 +100,28 @@ recommended_models:
 ### summary — 進度摘要
 
 統計各狀態的數量，並列出即將到期與逾期項目。
+
+### find_duplicates — 找出重複項目並分組
+
+將符合 filter_* / keyword 條件的項目依「標題」分組，回傳：
+- `groups[*]`：每一組重複項目，含 `items`（各 page_id 與欄位）、`keep_suggestion`（建議保留）、`delete_suggestion`（建議刪除的 page_ids）
+- `all_delete_ids`：所有 group 的 delete_suggestion 串接，可直接餵給 delete_batch
+
+**標題正規化**：去除末端 `(1)` / `(2)` 序號、空白正規化、大小寫視為相同，因此
+「整理並優化網頁部分內容與結構 (1)」與「整理並優化網頁部分內容與結構」會被視為同一組。
+
+**參數**：
+- `dedupe_by`：`ToDo`（預設，依標題）或 `ToDo+專案`（再加上專案串接，避免不同專案的同名項目被誤判）
+- `keep`：`oldest`（預設保留最早建立）或 `newest`
+- 篩選參數同 list：`filter_status` / `filter_date` / `filter_due_date` / `filter_hours` / `filter_project` / `filter_assignee` / `keyword` / `filter_logic`
+
+**典型流程**：
+```
+1. find_duplicates(filter_date="2026-04-15")  → 取得 groups + all_delete_ids
+2. 向使用者報告有哪幾組重複、將保留/刪除哪些
+3. delete_batch(page_ids=all_delete_ids)       → preview（不帶 confirm）
+4. delete_batch(page_ids=all_delete_ids, confirm=true)  → 實際封存
+```
 
 ### update — 更新單筆欄位
 

@@ -52,6 +52,259 @@ def _safe_int_env(name: str, default: int) -> int:
 
 # Safety guard: prevent accidental large destructive operations.
 MAX_SAFE_BATCH_DELETE = max(1, min(_safe_int_env("NOTION_MAX_SAFE_BATCH_DELETE", 20), 200))
+# Keep recent duplicate context for follow-up delete turns that may carry placeholder IDs.
+DUPLICATE_CONTEXT_TTL_SECONDS = max(60, min(_safe_int_env("NOTION_DUPLICATE_CONTEXT_TTL_SECONDS", 1800), 86400))
+# Keep recent list scope context so follow-up duplicate checks stay within previously listed range.
+LIST_SCOPE_CONTEXT_TTL_SECONDS = max(60, min(_safe_int_env("NOTION_LIST_SCOPE_TTL_SECONDS", 1800), 86400))
+
+
+def _session_cache_key(db_id: str) -> str:
+    session_key = (
+        os.getenv("SKILL_PARAM_SESSION_ID", "").strip()
+        or os.getenv("SESSION_ID", "").strip()
+        or "default"
+    )
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{session_key}__{db_id}")
+
+
+def _duplicate_cache_path(db_id: str) -> Path:
+    """Build cache file path for the latest find_duplicates context."""
+    workspace_dir = Path(os.getenv("WORKSPACE_DIR", str(Path.cwd())))
+    cache_dir = workspace_dir / "temp" / "notion_dedupe_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    safe_key = _session_cache_key(db_id)
+    return cache_dir / f"{safe_key}.json"
+
+
+def _list_scope_cache_path(db_id: str) -> Path:
+    """Build cache file path for the latest list scope context."""
+    workspace_dir = Path(os.getenv("WORKSPACE_DIR", str(Path.cwd())))
+    cache_dir = workspace_dir / "temp" / "notion_list_scope_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / f"{_session_cache_key(db_id)}.json"
+
+
+def _load_duplicate_context(db_id: str) -> dict | None:
+    """Load cached find_duplicates context if still fresh."""
+    path = _duplicate_cache_path(db_id)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    saved_at = int(data.get("saved_at", 0) or 0)
+    if saved_at <= 0 or (time.time() - saved_at) > DUPLICATE_CONTEXT_TTL_SECONDS:
+        return None
+    if str(data.get("db_id", "")) != str(db_id):
+        return None
+    return data
+
+
+def _save_duplicate_context(db_id: str, groups: list, all_delete_ids: list[str]) -> None:
+    """Persist minimal duplicate context for follow-up delete actions."""
+    safe_groups = []
+    for g in groups or []:
+        if not isinstance(g, dict):
+            continue
+        ds = [pid for pid in (g.get("delete_suggestion") or []) if isinstance(pid, str) and _is_valid_uuid(pid)]
+        if not ds:
+            continue
+        safe_groups.append(
+            {
+                "key": str(g.get("key", "")),
+                "delete_suggestion": ds,
+            }
+        )
+    safe_all = [pid for pid in (all_delete_ids or []) if isinstance(pid, str) and _is_valid_uuid(pid)]
+    payload = {
+        "saved_at": int(time.time()),
+        "db_id": db_id,
+        "groups": safe_groups,
+        "all_delete_ids": safe_all,
+    }
+    try:
+        _duplicate_cache_path(db_id).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        # cache failure should never break main flow
+        pass
+
+
+def _load_list_scope_context(db_id: str) -> dict | None:
+    """Load cached list scope context if still fresh."""
+    path = _list_scope_cache_path(db_id)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    saved_at = int(data.get("saved_at", 0) or 0)
+    if saved_at <= 0 or (time.time() - saved_at) > LIST_SCOPE_CONTEXT_TTL_SECONDS:
+        return None
+    if str(data.get("db_id", "")) != str(db_id):
+        return None
+    items = data.get("items")
+    if not isinstance(items, list) or not items:
+        return None
+    return data
+
+
+def _save_list_scope_context(
+    db_id: str,
+    *,
+    items: list[dict],
+    filter_status: str | None = None,
+    filter_assignee: str | None = None,
+    filter_project: str | None = None,
+    filter_date: str | None = None,
+    filter_due_date: str | None = None,
+    filter_hours: str | None = None,
+    filter_logic: str = "and",
+    keyword: str | None = None,
+    offset: int = 0,
+    limit: int = 20,
+    total: int = 0,
+) -> None:
+    """Persist the latest visible list scope for follow-up duplicate operations."""
+    safe_items = []
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        pid = str(item.get("_page_id", "") or "").strip()
+        if not _is_valid_uuid(pid):
+            continue
+        safe_items.append(item)
+
+    if not safe_items:
+        return
+
+    payload = {
+        "saved_at": int(time.time()),
+        "db_id": db_id,
+        "scope": {
+            "source_action": "list",
+            "filter_status": filter_status,
+            "filter_assignee": filter_assignee,
+            "filter_project": filter_project,
+            "filter_date": filter_date,
+            "filter_due_date": filter_due_date,
+            "filter_hours": filter_hours,
+            "filter_logic": (filter_logic or "and"),
+            "keyword": keyword,
+            "offset": max(0, int(offset or 0)),
+            "limit": max(1, int(limit or 1)),
+            "total": max(0, int(total or 0)),
+            "returned": len(safe_items),
+        },
+        "page_ids": [it.get("_page_id") for it in safe_items if isinstance(it.get("_page_id"), str)],
+        "items": safe_items,
+    }
+    try:
+        _list_scope_cache_path(db_id).write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except Exception:
+        # cache failure should never break main flow
+        pass
+
+
+def _looks_like_placeholder_page_id(value: str) -> bool:
+    v = (value or "").strip().lower()
+    if not v:
+        return True
+    if v.isdigit():
+        return True
+    markers = (
+        "uuid",
+        "suggest",
+        "delete",
+        "page_id",
+        "placeholder",
+        "example",
+        "\u91cd\u8907",  # 重複
+        "\u5c0d\u61c9",  # 對應
+        "\u5efa\u8b70",  # 建議
+        "\u90a3\u500b",  # 那個
+        "\u90a3\u7b46",  # 那筆
+    )
+    return any(m in v for m in markers)
+
+
+def _resolve_page_ids_from_duplicate_context(db_id: str, requested_ids: list[str]) -> tuple[list[str], dict | None]:
+    """
+    Resolve invalid/non-UUID page IDs using the latest cached find_duplicates context.
+    Returns (resolved_ids, context). resolved_ids may be empty when unresolved.
+    """
+    ctx = _load_duplicate_context(db_id)
+    if not ctx:
+        return [], None
+
+    groups = ctx.get("groups") if isinstance(ctx.get("groups"), list) else []
+    all_delete_ids = [pid for pid in (ctx.get("all_delete_ids") or []) if isinstance(pid, str) and _is_valid_uuid(pid)]
+
+    resolved: list[str] = []
+    for raw in requested_ids or []:
+        token = (raw or "").strip()
+        if not token:
+            continue
+        if token.isdigit():
+            idx = int(token) - 1
+            if 0 <= idx < len(groups):
+                ds = [pid for pid in (groups[idx].get("delete_suggestion") or []) if isinstance(pid, str) and _is_valid_uuid(pid)]
+                if ds:
+                    resolved.append(ds[0])
+                    continue
+
+    if not resolved:
+        if len(all_delete_ids) == 1:
+            resolved.append(all_delete_ids[0])
+        elif len(groups) == 1:
+            ds = [pid for pid in (groups[0].get("delete_suggestion") or []) if isinstance(pid, str) and _is_valid_uuid(pid)]
+            if len(ds) == 1:
+                resolved.append(ds[0])
+
+    # dedupe while preserving order
+    uniq: list[str] = []
+    seen = set()
+    for pid in resolved:
+        if pid not in seen:
+            seen.add(pid)
+            uniq.append(pid)
+    return uniq, ctx
+
+
+def _prune_duplicate_context_after_delete(db_id: str, archived_ids: list[str]) -> None:
+    """Remove archived IDs from cached duplicate context."""
+    if not archived_ids:
+        return
+    ctx = _load_duplicate_context(db_id)
+    if not isinstance(ctx, dict):
+        return
+    archived = {pid for pid in archived_ids if isinstance(pid, str) and _is_valid_uuid(pid)}
+    if not archived:
+        return
+
+    groups = ctx.get("groups") if isinstance(ctx.get("groups"), list) else []
+    new_groups = []
+    for g in groups:
+        if not isinstance(g, dict):
+            continue
+        ds = [pid for pid in (g.get("delete_suggestion") or []) if isinstance(pid, str) and _is_valid_uuid(pid)]
+        ds = [pid for pid in ds if pid not in archived]
+        if ds:
+            ng = dict(g)
+            ng["delete_suggestion"] = ds
+            new_groups.append(ng)
+
+    all_ids = [pid for pid in (ctx.get("all_delete_ids") or []) if isinstance(pid, str) and _is_valid_uuid(pid)]
+    all_ids = [pid for pid in all_ids if pid not in archived]
+    _save_duplicate_context(db_id=db_id, groups=new_groups, all_delete_ids=all_ids)
 
 
 def _headers(token: str) -> dict:
@@ -273,9 +526,25 @@ def build_notion_filter(filter_status: str | None, filter_assignee: str | None,
     return {logic_key: conditions}
 
 
+def _normalize_todo(text: str) -> str:
+    """Normalize a todo title for duplicate/keyword comparison.
+
+    去除末端 (1)/(2)… 等序號、空白正規化、大小寫差異，
+    讓「整理並優化網頁部分內容與結構 (1)」與「整理並優化網頁部分內容與結構」
+    以及 LLM 自行插入的空白變體（「優化 token 管理」vs「優化token管理」）視為同一組。
+    """
+    if not text:
+        return ""
+    s = re.sub(r"\s*\(\s*\d+\s*\)\s*$", "", text)
+    s = re.sub(r"\s+", "", s).strip()
+    return s.lower()
+
+
 def apply_keyword_filter(items: list, keyword: str) -> list:
-    kw = keyword.lower()
-    return [item for item in items if kw in item.get("ToDo", "").lower()]
+    kw = _normalize_todo(keyword)
+    if not kw:
+        return []
+    return [item for item in items if kw in _normalize_todo(item.get("ToDo", ""))]
 
 
 # ── Notion Property Builder ──────────────────────────────────────────────────
@@ -724,6 +993,23 @@ def action_list(token: str, db_id: str, filter_status: str | None,
             clean["page_id"] = clean.pop("_page_id")
         clean_items.append(clean)
 
+    # Persist the current visible list scope for follow-up duplicate checks/deletes.
+    _save_list_scope_context(
+        db_id,
+        items=items,
+        filter_status=filter_status,
+        filter_assignee=filter_assignee,
+        filter_project=filter_project,
+        filter_date=filter_date,
+        filter_due_date=filter_due_date,
+        filter_hours=filter_hours,
+        filter_logic=filter_logic,
+        keyword=keyword,
+        offset=offset,
+        limit=limit,
+        total=total,
+    )
+
     result = {"status": "success", "action": "list", "total": total,
               "returned": len(clean_items), "offset": offset, "limit": limit,
               "items": clean_items,
@@ -738,6 +1024,148 @@ def action_list(token: str, db_id: str, filter_status: str | None,
     return result
 
 
+def action_find_duplicates(token: str, db_id: str,
+                           filter_status: str | None = None,
+                           filter_assignee: str | None = None,
+                           filter_project: str | None = None,
+                           filter_date: str | None = None,
+                           filter_due_date: str | None = None,
+                           filter_hours: str | None = None,
+                           keyword: str | None = None,
+                           filter_logic: str = "and",
+                           dedupe_by: str = "ToDo",
+                           keep: str = "oldest",
+                           scope_mode: str = "auto") -> dict:
+    """Group items by a key and surface duplicates with clear keep/delete suggestions.
+
+    scope_mode:
+      - auto (default): if no explicit filter_* / keyword is provided, inherit the latest list scope.
+      - list: force using latest list scope; if unavailable, return an error.
+      - global: always search globally unless explicit filter_* / keyword is provided.
+    """
+    has_explicit_scope = any([
+        filter_status,
+        filter_assignee,
+        filter_project,
+        filter_date,
+        filter_due_date,
+        filter_hours,
+        keyword,
+    ])
+    normalized_scope_mode = (scope_mode or "auto").strip().lower()
+    if normalized_scope_mode not in ("auto", "list", "global"):
+        normalized_scope_mode = "auto"
+
+    scope_applied = "explicit_filter" if has_explicit_scope else "global"
+    scope_context = None
+    items: list[dict] | None = None
+
+    if not has_explicit_scope and normalized_scope_mode in ("auto", "list"):
+        list_ctx = _load_list_scope_context(db_id)
+        if isinstance(list_ctx, dict):
+            cached_items = list_ctx.get("items")
+            if isinstance(cached_items, list):
+                scoped_items = []
+                for it in cached_items:
+                    if not isinstance(it, dict):
+                        continue
+                    pid = str(it.get("_page_id", "") or "").strip()
+                    if _is_valid_uuid(pid):
+                        scoped_items.append(it)
+                if scoped_items:
+                    items = scoped_items
+                    scope_applied = "last_list"
+                    if isinstance(list_ctx.get("scope"), dict):
+                        scope_context = list_ctx["scope"]
+
+        if items is None and normalized_scope_mode == "list":
+            return {
+                "status": "error",
+                "action": "find_duplicates",
+                "message": (
+                    "目前沒有可沿用的 list 範圍。請先呼叫 action=list，"
+                    "或改用 scope_mode='global' 重新搜尋整個 Notion。"
+                ),
+            }
+
+    if items is None:
+        items = _query_pages_by_filter(token, db_id,
+                                       filter_status=filter_status,
+                                       filter_assignee=filter_assignee,
+                                       filter_project=filter_project,
+                                       filter_date=filter_date,
+                                       filter_due_date=filter_due_date,
+                                       filter_hours=filter_hours,
+                                       keyword=keyword,
+                                       filter_logic=filter_logic)
+        if not has_explicit_scope and normalized_scope_mode == "auto":
+            scope_applied = "global_fallback"
+        elif not has_explicit_scope:
+            scope_applied = "global"
+
+    def _key_of(it: dict) -> str:
+        base = _normalize_todo(it.get("ToDo", ""))
+        if dedupe_by == "ToDo+專案":
+            proj = "/".join(sorted(it.get("專案", []) or []))
+            return f"{base}||{proj}"
+        return base
+
+    groups_map: dict[str, list[dict]] = {}
+    for it in items:
+        k = _key_of(it)
+        if not k:
+            continue
+        groups_map.setdefault(k, []).append(it)
+
+    groups = []
+    total_duplicates = 0
+    for k, members in groups_map.items():
+        if len(members) < 2:
+            continue
+        members_sorted = sorted(members,
+                                key=lambda x: x.get("建立時間") or x.get("_last_edited") or "")
+        keep_item = members_sorted[0] if keep == "oldest" else members_sorted[-1]
+        delete_items = [m for m in members_sorted if m["_page_id"] != keep_item["_page_id"]]
+        total_duplicates += len(delete_items)
+        groups.append({
+            "key": k.split("||")[0],
+            "count": len(members),
+            "items": [
+                {"page_id": m["_page_id"],
+                 "ToDo": m.get("ToDo", ""),
+                 "建立時間": m.get("建立時間"),
+                 "狀態": m.get("狀態"),
+                 "工時": m.get("工時"),
+                 "專案": m.get("專案", [])}
+                for m in members_sorted
+            ],
+            "keep_suggestion": keep_item["_page_id"],
+            "delete_suggestion": [m["_page_id"] for m in delete_items],
+        })
+
+    all_delete_ids = [pid for g in groups for pid in g["delete_suggestion"]]
+    _save_duplicate_context(db_id=db_id, groups=groups, all_delete_ids=all_delete_ids)
+    response = {
+        "status": "success",
+        "action": "find_duplicates",
+        "dedupe_by": dedupe_by,
+        "keep": keep,
+        "scanned": len(items),
+        "scope_mode": normalized_scope_mode,
+        "scope_applied": scope_applied,
+        "duplicate_groups": len(groups),
+        "total_duplicates": total_duplicates,
+        "groups": groups,
+        "all_delete_ids": all_delete_ids,
+        "usage_hint": (
+            "若使用者確認要去重，請把 all_delete_ids 當成 page_ids 傳給 action=delete_batch（先不帶 confirm 以取得 preview，再帶 confirm=true 實際執行）。"
+            "若使用者只想刪特定幾組，請從對應 group.delete_suggestion 挑選 page_id。"
+            "嚴禁把 groups[*].items 內所有 page_id 全部刪除（那會連 keep_suggestion 一起刪掉）。"
+        ),
+    }
+    if isinstance(scope_context, dict) and scope_context:
+        response["scope_context"] = scope_context
+    return response
 def action_summary(token: str, db_id: str) -> dict:
     """Generate progress summary."""
     pages = query_database(token, db_id, max_pages=5)
@@ -890,6 +1318,11 @@ def action_delete(token: str, page_id: str, keyword: str | None = None,
                     "message": f"找到 {len(items)} 筆符合「{keyword}」的項目，請指定 page_id",
                     "candidates": candidates}
 
+    if (page_id and not _is_valid_uuid(page_id)) and db_id and _looks_like_placeholder_page_id(page_id):
+        resolved_ids, _ = _resolve_page_ids_from_duplicate_context(db_id, [page_id])
+        if resolved_ids:
+            page_id = resolved_ids[0]
+
     if not page_id or not _is_valid_uuid(page_id):
         return {"status": "error", "action": "delete", "page_id": page_id or "",
                 "message": f"page_id 格式錯誤：'{page_id or ''}' 不是有效的 UUID。"
@@ -995,6 +1428,41 @@ def action_delete_batch(token: str, db_id: str,
     headers = _headers(token)
     page_ids = _normalize_page_ids(page_ids)
 
+    # Recover invalid placeholder IDs using latest find_duplicates context.
+    if page_ids:
+        valid_input_ids = [pid for pid in page_ids if _is_valid_uuid(pid)]
+        invalid_input_ids = [pid for pid in page_ids if not _is_valid_uuid(pid)]
+        if invalid_input_ids:
+            recoverable = [pid for pid in invalid_input_ids if _looks_like_placeholder_page_id(pid)]
+            recovered_ids, ctx = _resolve_page_ids_from_duplicate_context(db_id, recoverable)
+            page_ids = valid_input_ids + recovered_ids
+
+            if not page_ids:
+                detail = {}
+                if isinstance(ctx, dict):
+                    groups = ctx.get("groups") if isinstance(ctx.get("groups"), list) else []
+                    detail["cached_groups"] = [
+                        {
+                            "group_index": i + 1,
+                            "key": g.get("key", ""),
+                            "delete_suggestion": (g.get("delete_suggestion") or [])[:3],
+                        }
+                        for i, g in enumerate(groups[:5]) if isinstance(g, dict)
+                    ]
+                return {
+                    "status": "error",
+                    "action": "delete_batch",
+                    "message": (
+                        "page_ids 包含無效 UUID，且無法從最近一次 find_duplicates 結果自動解析。"
+                        "請先重新呼叫 find_duplicates，或直接傳入正確 UUID 的 page_ids。"
+                    ),
+                    "invalid_page_ids": invalid_input_ids,
+                    **detail,
+                }
+
+            # If fallback was used, treat as explicit confirmed page_ids.
+            confirm = True
+
     has_filter = any([filter_status, filter_assignee, filter_project, filter_date,
                       filter_due_date, keyword, filter_hours])
 
@@ -1086,6 +1554,8 @@ def action_delete_batch(token: str, db_id: str,
 
     archived = sum(1 for r in results if r.get("_action") == "archived")
     errored = sum(1 for r in results if r.get("_action") == "error")
+    archived_ids = [r.get("page_id", "") for r in results if r.get("_action") == "archived"]
+    _prune_duplicate_context_after_delete(db_id, archived_ids)
 
     return {"status": "success", "action": "delete_batch",
             "total": len(results), "archived": archived, "errors": errored,
@@ -1261,6 +1731,22 @@ def main():
         elif action == "summary":
             result = action_summary(token, db_id)
 
+        elif action == "find_duplicates":
+            result = action_find_duplicates(
+                token, db_id,
+                filter_status=os.getenv("SKILL_PARAM_FILTER_STATUS", "").strip() or None,
+                filter_assignee=os.getenv("SKILL_PARAM_FILTER_ASSIGNEE", "").strip() or None,
+                filter_project=os.getenv("SKILL_PARAM_FILTER_PROJECT", "").strip() or None,
+                filter_date=os.getenv("SKILL_PARAM_FILTER_DATE", "").strip() or None,
+                filter_due_date=os.getenv("SKILL_PARAM_FILTER_DUE_DATE", "").strip() or None,
+                filter_hours=os.getenv("SKILL_PARAM_FILTER_HOURS", "").strip() or None,
+                keyword=os.getenv("SKILL_PARAM_KEYWORD", "").strip() or None,
+                filter_logic=os.getenv("SKILL_PARAM_FILTER_LOGIC", "and").strip() or "and",
+                dedupe_by=os.getenv("SKILL_PARAM_DEDUPE_BY", "ToDo").strip() or "ToDo",
+                keep=os.getenv("SKILL_PARAM_KEEP", "oldest").strip() or "oldest",
+                scope_mode=os.getenv("SKILL_PARAM_SCOPE_MODE", "auto").strip() or "auto",
+            )
+
         elif action == "update":
             page_id = os.getenv("SKILL_PARAM_PAGE_ID", "").strip()
             keyword = os.getenv("SKILL_PARAM_KEYWORD", "").strip() or None
@@ -1345,7 +1831,7 @@ def main():
 
         else:
             result = {"status": "error",
-                      "message": f"不支援的動作：{action}，請使用 create/create_batch/list/summary/update/update_batch/delete/delete_batch"}
+                      "message": f"不支援的動作：{action}，請使用 create/create_batch/list/summary/find_duplicates/update/update_batch/delete/delete_batch"}
 
         print(json.dumps(result, ensure_ascii=False))
 
@@ -1356,3 +1842,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
