@@ -17,7 +17,7 @@ description: >
   【必填參數】呼叫此工具時必須傳入 action 參數，可選值：
   create（新增單筆，需帶 todo_title）、
   create_batch（批次匯入，需帶 items_json 或 cleaned_text + org_data_json）、
-  list（查詢列表，可帶 filter_status / filter_assignee / filter_project / keyword / filter_date / filter_due_date）、
+  list（查詢列表，可帶 filter_status / filter_assignee / filter_project / keyword / filter_date / filter_due_date / limit / offset）、
   summary（進度摘要，無額外參數）、
   update（更新單筆欄位，帶 page_id 或 keyword 定位）、
   update_batch（條件式批次更新，帶篩選條件 + set_status / set_assignee 等目標值）、
@@ -28,6 +28,9 @@ description: >
   filter_due_date 同樣支援 before:/after: 語法。
   【重要】update 和 delete 可用 keyword 參數以名稱查找（若僅匹配 1 筆則自動執行，多筆則回傳候選清單）。
   也可用 page_id（Notion UUID 格式如 "343e791c-b3f0-8130-8b47-c0e50ee40a53"）。
+  【分頁參數】list 預設每次回傳 20 筆（limit=20），若 total 大於 returned，
+  回傳結果會包含 next_offset 值，請用 offset=next_offset 取得下一頁，直到所有資料取完。
+  使用者要求「列出全部」時，請自動用 offset 逐頁取完所有資料再一次呈現。
   若使用者說「刪除第N項」或「更新第N項」，請先比對先前 list 結果找出對應的 page_id UUID 後再呼叫。
 runtime_requirements: [requests, openai]
 risk_level: low
@@ -62,6 +65,13 @@ recommended_models:
 ### list — 列出待辦
 
 依條件篩選後回傳 ToDo 清單，包含 page_id 供後續 update/delete 使用。
+
+**分頁參數**：
+- `limit`：每頁筆數，預設 20，最大 100
+- `offset`：跳過前 N 筆，預設 0
+
+回傳結果含 `total`（總筆數）、`returned`（本次回傳筆數）、`offset`、`limit`。
+若還有下一頁，會額外回傳 `next_offset`，請用 `offset=next_offset` 取得後續資料。
 
 ### summary — 進度摘要
 

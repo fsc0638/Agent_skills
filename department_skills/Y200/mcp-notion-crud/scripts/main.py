@@ -174,30 +174,27 @@ def build_notion_filter(filter_status: str | None, filter_assignee: str | None,
         conditions.append({"property": "專案", "multi_select": {"contains": filter_project}})
     if filter_date:
         # filter_date supports:
-        #   "today"                        → 今天建立的
-        #   "yyyy-mm-dd"                   → 該日建立的（精確）
+        #   "today"                        → 「建立時間」欄位為今天
+        #   "yyyy-mm-dd"                   → 「建立時間」欄位為指定日期（精確）
         #   "yyyy-mm-dd:yyyy-mm-dd"        → 範圍
-        #   "before:yyyy-mm-dd"            → 該日之前建立的
-        #   "after:yyyy-mm-dd"             → 該日之後建立的（含當日）
+        #   "before:yyyy-mm-dd"            → 「建立時間」早於指定日期
+        #   "after:yyyy-mm-dd"             → 「建立時間」晚於/等於指定日期
         fd = filter_date.strip()
         if fd.lower() == "today":
             today = datetime.now().strftime("%Y-%m-%d")
-            conditions.append({"timestamp": "created_time", "created_time": {"on_or_after": today}})
+            conditions.append({"property": "建立時間", "date": {"equals": today}})
         elif fd.lower().startswith("before:"):
             date_val = fd.split(":", 1)[1].strip()
-            conditions.append({"timestamp": "created_time", "created_time": {"before": date_val}})
+            conditions.append({"property": "建立時間", "date": {"before": date_val}})
         elif fd.lower().startswith("after:"):
             date_val = fd.split(":", 1)[1].strip()
-            conditions.append({"timestamp": "created_time", "created_time": {"on_or_after": date_val}})
+            conditions.append({"property": "建立時間", "date": {"on_or_after": date_val}})
         elif ":" in fd and not fd.startswith(("before", "after")):
             parts = fd.split(":", 1)
-            conditions.append({"timestamp": "created_time", "created_time": {"on_or_after": parts[0].strip()}})
-            end_dt = datetime.strptime(parts[1].strip(), "%Y-%m-%d") + timedelta(days=1)
-            conditions.append({"timestamp": "created_time", "created_time": {"before": end_dt.strftime("%Y-%m-%d")}})
+            conditions.append({"property": "建立時間", "date": {"on_or_after": parts[0].strip()}})
+            conditions.append({"property": "建立時間", "date": {"on_or_before": parts[1].strip()}})
         else:
-            conditions.append({"timestamp": "created_time", "created_time": {"on_or_after": fd}})
-            end_dt = datetime.strptime(fd, "%Y-%m-%d") + timedelta(days=1)
-            conditions.append({"timestamp": "created_time", "created_time": {"before": end_dt.strftime("%Y-%m-%d")}})
+            conditions.append({"property": "建立時間", "date": {"equals": fd}})
     if filter_due_date:
         # filter_due_date supports:
         #   "yyyy-mm-dd"                   → 精確到期日
