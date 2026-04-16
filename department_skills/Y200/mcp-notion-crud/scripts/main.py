@@ -154,9 +154,48 @@ def parse_page(page: dict) -> dict:
 
 # ── Filter Builder ───────────────────────────────────────────────────────────
 
+def _parse_number_filter(raw: str) -> list[dict]:
+    """Parse numeric filter syntax and return Notion number-filter conditions for 工時.
+
+    支援語法：
+      "8"            → equals 8
+      ">=8" / ">8"   → on_or_greater_than / greater_than
+      "<=8" / "<8"   → on_or_less_than / less_than
+      "5:10"         → range [5, 10]
+    """
+    s = raw.strip()
+    if not s:
+        return []
+    prop = "工時"
+    # range
+    if ":" in s and not any(s.startswith(p) for p in (">", "<")):
+        lo, hi = [p.strip() for p in s.split(":", 1)]
+        try:
+            return [
+                {"property": prop, "number": {"greater_than_or_equal_to": float(lo)}},
+                {"property": prop, "number": {"less_than_or_equal_to": float(hi)}},
+            ]
+        except ValueError:
+            return []
+    try:
+        if s.startswith(">="):
+            return [{"property": prop, "number": {"greater_than_or_equal_to": float(s[2:])}}]
+        if s.startswith("<="):
+            return [{"property": prop, "number": {"less_than_or_equal_to": float(s[2:])}}]
+        if s.startswith(">"):
+            return [{"property": prop, "number": {"greater_than": float(s[1:])}}]
+        if s.startswith("<"):
+            return [{"property": prop, "number": {"less_than": float(s[1:])}}]
+        return [{"property": prop, "number": {"equals": float(s)}}]
+    except ValueError:
+        return []
+
+
 def build_notion_filter(filter_status: str | None, filter_assignee: str | None,
                         filter_project: str | None, filter_date: str | None,
-                        filter_due_date: str | None) -> dict | None:
+                        filter_due_date: str | None,
+                        filter_hours: str | None = None,
+                        filter_logic: str = "and") -> dict | None:
     conditions = []
     if filter_status:
         # filter_status supports:
@@ -224,11 +263,14 @@ def build_notion_filter(filter_status: str | None, filter_assignee: str | None,
             conditions.append({"property": "到期日", "date": {"on_or_before": parts[1].strip()}})
         else:
             conditions.append({"property": "到期日", "date": {"equals": fdd}})
+    if filter_hours:
+        conditions.extend(_parse_number_filter(filter_hours))
     if not conditions:
         return None
     if len(conditions) == 1:
         return conditions[0]
-    return {"and": conditions}
+    logic_key = "or" if (filter_logic or "").strip().lower() == "or" else "and"
+    return {logic_key: conditions}
 
 
 def apply_keyword_filter(items: list, keyword: str) -> list:
@@ -658,10 +700,14 @@ def action_list(token: str, db_id: str, filter_status: str | None,
                 filter_assignee: str | None, filter_project: str | None,
                 keyword: str | None, limit: int, offset: int = 0,
                 filter_date: str | None = None,
-                filter_due_date: str | None = None) -> dict:
+                filter_due_date: str | None = None,
+                filter_hours: str | None = None,
+                filter_logic: str = "and") -> dict:
     """List todo items with filters. Supports offset-based pagination."""
     notion_filter = build_notion_filter(filter_status, filter_assignee, filter_project,
-                                        filter_date, filter_due_date)
+                                        filter_date, filter_due_date,
+                                        filter_hours=filter_hours,
+                                        filter_logic=filter_logic)
     pages = query_database(token, db_id, filter_obj=notion_filter)
     items = [parse_page(p) for p in pages]
 
@@ -863,10 +909,14 @@ def _query_pages_by_filter(token: str, db_id: str,
                            filter_project: str | None = None,
                            filter_date: str | None = None,
                            filter_due_date: str | None = None,
-                           keyword: str | None = None) -> list:
+                           keyword: str | None = None,
+                           filter_hours: str | None = None,
+                           filter_logic: str = "and") -> list:
     """Query pages using filters and return parsed items with page IDs."""
     notion_filter = build_notion_filter(filter_status, filter_assignee,
-                                        filter_project, filter_date, filter_due_date)
+                                        filter_project, filter_date, filter_due_date,
+                                        filter_hours=filter_hours,
+                                        filter_logic=filter_logic)
     pages = query_database(token, db_id, filter_obj=notion_filter, max_pages=5)
     items = [parse_page(p) for p in pages]
     if keyword:
@@ -911,44 +961,68 @@ def action_delete_batch(token: str, db_id: str,
                         filter_project: str | None = None,
                         filter_date: str | None = None,
                         filter_due_date: str | None = None,
-                        keyword: str | None = None) -> dict:
-    """Batch archive pages by page_ids or filter conditions."""
+                        keyword: str | None = None,
+                        filter_hours: str | None = None,
+                        filter_logic: str = "and",
+                        confirm: bool = False) -> dict:
+    """Batch archive pages by page_ids or filter conditions.
+
+    Two-phase flow for filter-based delete:
+      1. 第一次呼叫（只帶 filter）→ 回傳 preview，列出命中的 page_ids，不執行
+      2. 第二次呼叫（帶 page_ids，或 confirm=true + 同樣 filter）→ 實際執行
+    直接帶 page_ids 視為已確認，立即執行。
+    """
     headers = _headers(token)
     page_ids = _normalize_page_ids(page_ids)
 
-    # Guardrail: destructive batch delete must be explicit page_id based.
+    has_filter = any([filter_status, filter_assignee, filter_project, filter_date,
+                      filter_due_date, keyword, filter_hours])
+
+    # Filter-based flow
     if not page_ids:
-        provided_filters = {}
-        if filter_status:
-            provided_filters["filter_status"] = filter_status
-        if filter_assignee:
-            provided_filters["filter_assignee"] = filter_assignee
-        if filter_project:
-            provided_filters["filter_project"] = filter_project
-        if filter_date:
-            provided_filters["filter_date"] = filter_date
-        if filter_due_date:
-            provided_filters["filter_due_date"] = filter_due_date
-        if keyword:
-            provided_filters["keyword"] = keyword
+        if not has_filter:
+            return {
+                "status": "error",
+                "action": "delete_batch",
+                "message": "delete_batch 必須提供 page_ids 或至少一個 filter_* / keyword 條件。",
+            }
 
-        return {
-            "status": "error",
-            "action": "delete_batch",
-            "message": "為避免誤刪，delete_batch 必須提供 page_ids(JSON 陣列 UUID)。請先用 action=list 取得目標 page_id，再執行刪除。",
-            "provided_filters": provided_filters,
-            "hint": "如果使用者指定「第N項」，請先依目前清單位置換算 page_id 後傳入 page_ids。",
-        }
-
-    # If no page_ids provided, query by filter
-    if False and not page_ids:
-        items = _query_pages_by_filter(token, db_id, filter_status, filter_assignee,
-                                       filter_project, filter_date, filter_due_date, keyword)
+        items = _query_pages_by_filter(token, db_id,
+                                       filter_status=filter_status,
+                                       filter_assignee=filter_assignee,
+                                       filter_project=filter_project,
+                                       filter_date=filter_date,
+                                       filter_due_date=filter_due_date,
+                                       keyword=keyword,
+                                       filter_hours=filter_hours,
+                                       filter_logic=filter_logic)
         if not items:
             return {"status": "success", "action": "delete_batch",
                     "total": 0, "archived": 0, "errors": 0,
                     "message": "查無符合條件的待辦項目"}
-        page_ids = [item["_page_id"] for item in items]
+
+        resolved_ids = [it["_page_id"] for it in items]
+
+        if not confirm:
+            # Preview mode: list what would be deleted, do not execute.
+            preview = [{"ToDo": it.get("ToDo", ""),
+                        "到期日": it.get("到期日"),
+                        "狀態": it.get("狀態", ""),
+                        "page_id": it["_page_id"]} for it in items[:MAX_SAFE_BATCH_DELETE]]
+            return {
+                "status": "preview",
+                "action": "delete_batch",
+                "total": len(items),
+                "message": f"偵測到 {len(items)} 筆符合條件的待辦項目。確認要刪除請再次呼叫並帶 confirm=true，或帶上回傳的 page_ids。",
+                "candidates": preview,
+                "page_ids": resolved_ids[:MAX_SAFE_BATCH_DELETE],
+                "confirm_hint": "下一步呼叫請帶 confirm=true（保留相同 filter 條件）或直接傳 page_ids 參數執行。",
+                "truncated": len(items) > MAX_SAFE_BATCH_DELETE,
+                "max_allowed": MAX_SAFE_BATCH_DELETE,
+            }
+
+        # confirm=true: execute using filter-resolved ids
+        page_ids = resolved_ids
 
     if len(page_ids) > MAX_SAFE_BATCH_DELETE:
         return {
@@ -1010,7 +1084,9 @@ def action_update_batch(token: str, db_id: str,
                         set_status: str | None = None,
                         set_assignee: str | None = None,
                         set_due_date: str | None = None,
-                        set_project: str | None = None) -> dict:
+                        set_project: str | None = None,
+                        filter_hours: str | None = None,
+                        filter_logic: str = "and") -> dict:
     """Batch update pages by page_ids or filter conditions."""
     headers = _headers(token)
 
@@ -1038,8 +1114,15 @@ def action_update_batch(token: str, db_id: str,
 
     # If no page_ids provided, query by filter
     if not page_ids:
-        items = _query_pages_by_filter(token, db_id, filter_status, filter_assignee,
-                                       filter_project, filter_date, filter_due_date, keyword)
+        items = _query_pages_by_filter(token, db_id,
+                                       filter_status=filter_status,
+                                       filter_assignee=filter_assignee,
+                                       filter_project=filter_project,
+                                       filter_date=filter_date,
+                                       filter_due_date=filter_due_date,
+                                       keyword=keyword,
+                                       filter_hours=filter_hours,
+                                       filter_logic=filter_logic)
         if not items:
             return {"status": "success", "action": "update_batch",
                     "total": 0, "updated": 0, "errors": 0,
@@ -1106,12 +1189,22 @@ def main():
                 print(json.dumps({"status": "error", "action": "create",
                                   "message": "缺少 todo_title 參數"}, ensure_ascii=False))
                 return
+            def _c_resolve(primary: str, *aliases: str) -> str | None:
+                val = os.getenv(f"SKILL_PARAM_{primary}", "").strip()
+                if val:
+                    return val
+                for a in aliases:
+                    v = os.getenv(f"SKILL_PARAM_{a}", "").strip()
+                    if v:
+                        return v
+                return None
+
             result = action_create(
                 token, db_id, todo_title,
-                status=os.getenv("SKILL_PARAM_STATUS", "").strip() or None,
-                assignee=os.getenv("SKILL_PARAM_ASSIGNEE", "").strip() or None,
-                due_date=os.getenv("SKILL_PARAM_DUE_DATE", "").strip() or None,
-                project=os.getenv("SKILL_PARAM_PROJECT", "").strip() or None,
+                status=_c_resolve("STATUS", "SET_STATUS", "FILTER_STATUS"),
+                assignee=_c_resolve("ASSIGNEE", "SET_ASSIGNEE", "FILTER_ASSIGNEE"),
+                due_date=_c_resolve("DUE_DATE", "SET_DUE_DATE", "FILTER_DUE_DATE"),
+                project=_c_resolve("PROJECT", "SET_PROJECT", "FILTER_PROJECT"),
                 source=os.getenv("SKILL_PARAM_SOURCE", "").strip() or None,
                 keywords=os.getenv("SKILL_PARAM_KEYWORDS", "").strip() or None,
             )
@@ -1141,6 +1234,8 @@ def main():
                 offset=offset,
                 filter_date=os.getenv("SKILL_PARAM_FILTER_DATE", "").strip() or None,
                 filter_due_date=os.getenv("SKILL_PARAM_FILTER_DUE_DATE", "").strip() or None,
+                filter_hours=os.getenv("SKILL_PARAM_FILTER_HOURS", "").strip() or None,
+                filter_logic=os.getenv("SKILL_PARAM_FILTER_LOGIC", "and").strip() or "and",
             )
 
         elif action == "summary":
@@ -1153,12 +1248,24 @@ def main():
                 print(json.dumps({"status": "error", "action": "update",
                                   "message": "請提供 page_id 或 keyword 參數"}, ensure_ascii=False))
                 return
+            # Alias fallback: LLM 常誤用 filter_* / set_* 前綴於單筆 update。
+            # 將其視為直接欄位值以提高容錯（僅當對應直接參數為空時才接手）。
+            def _resolve(primary: str, *aliases: str) -> str | None:
+                val = os.getenv(f"SKILL_PARAM_{primary}", "").strip()
+                if val:
+                    return val
+                for a in aliases:
+                    v = os.getenv(f"SKILL_PARAM_{a}", "").strip()
+                    if v:
+                        return v
+                return None
+
             result = action_update(
                 token, page_id or "",
-                status=os.getenv("SKILL_PARAM_STATUS", "").strip() or None,
-                assignee=os.getenv("SKILL_PARAM_ASSIGNEE", "").strip() or None,
-                due_date=os.getenv("SKILL_PARAM_DUE_DATE", "").strip() or None,
-                project=os.getenv("SKILL_PARAM_PROJECT", "").strip() or None,
+                status=_resolve("STATUS", "SET_STATUS", "FILTER_STATUS"),
+                assignee=_resolve("ASSIGNEE", "SET_ASSIGNEE", "FILTER_ASSIGNEE"),
+                due_date=_resolve("DUE_DATE", "SET_DUE_DATE", "FILTER_DUE_DATE"),
+                project=_resolve("PROJECT", "SET_PROJECT", "FILTER_PROJECT"),
                 todo_title=os.getenv("SKILL_PARAM_TODO_TITLE", "").strip() or None,
                 keyword=keyword,
                 db_id=db_id,
@@ -1179,6 +1286,8 @@ def main():
             if parse_error:
                 print(json.dumps({"status": "error", "action": "delete_batch", "message": parse_error}, ensure_ascii=False))
                 return
+            confirm_raw = os.getenv("SKILL_PARAM_CONFIRM", "").strip().lower()
+            confirm_flag = confirm_raw in ("true", "1", "yes", "y")
             result = action_delete_batch(
                 token, db_id, page_ids,
                 filter_status=os.getenv("SKILL_PARAM_FILTER_STATUS", "").strip() or None,
@@ -1187,6 +1296,9 @@ def main():
                 filter_date=os.getenv("SKILL_PARAM_FILTER_DATE", "").strip() or None,
                 filter_due_date=os.getenv("SKILL_PARAM_FILTER_DUE_DATE", "").strip() or None,
                 keyword=os.getenv("SKILL_PARAM_KEYWORD", "").strip() or None,
+                filter_hours=os.getenv("SKILL_PARAM_FILTER_HOURS", "").strip() or None,
+                filter_logic=os.getenv("SKILL_PARAM_FILTER_LOGIC", "and").strip() or "and",
+                confirm=confirm_flag,
             )
 
         elif action == "update_batch":
@@ -1203,6 +1315,8 @@ def main():
                 filter_date=os.getenv("SKILL_PARAM_FILTER_DATE", "").strip() or None,
                 filter_due_date=os.getenv("SKILL_PARAM_FILTER_DUE_DATE", "").strip() or None,
                 keyword=os.getenv("SKILL_PARAM_KEYWORD", "").strip() or None,
+                filter_hours=os.getenv("SKILL_PARAM_FILTER_HOURS", "").strip() or None,
+                filter_logic=os.getenv("SKILL_PARAM_FILTER_LOGIC", "and").strip() or "and",
                 set_status=os.getenv("SKILL_PARAM_SET_STATUS", "").strip() or None,
                 set_assignee=os.getenv("SKILL_PARAM_SET_ASSIGNEE", "").strip() or None,
                 set_due_date=os.getenv("SKILL_PARAM_SET_DUE_DATE", "").strip() or None,

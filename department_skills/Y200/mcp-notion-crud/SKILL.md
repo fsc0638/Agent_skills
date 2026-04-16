@@ -25,7 +25,11 @@ description: >
   delete_batch（條件式批次刪除，帶篩選條件）。
   【篩選語法】filter_status 支援 "not:已完成"（排除）；
   filter_date 支援 "before:2026-04-15"（之前）、"after:2026-04-15"（之後含當日）；
-  filter_due_date 同樣支援 before:/after: 語法。
+  filter_due_date 同樣支援 before:/after: 語法；
+  filter_hours 支援 "8"、">=8"、"<4"、"5:10"（範圍）等數值語法；
+  filter_logic="or" 可將多個 filter_* 條件以 OR 串接（預設 AND）。
+  【兩段式刪除】delete_batch 若只帶 filter_* 條件（無 page_ids）會先回傳 status=preview，
+  列出命中清單；確認無誤後請第二次呼叫帶 confirm=true（或直接帶 page_ids）才會實際執行。
   【重要】update 和 delete 可用 keyword 參數以名稱查找（若僅匹配 1 筆則自動執行，多筆則回傳候選清單）。
   也可用 page_id（Notion UUID 格式如 "343e791c-b3f0-8130-8b47-c0e50ee40a53"）。
   【分頁參數】list 預設每次回傳 20 筆（limit=20），若 total 大於 returned，
@@ -94,12 +98,58 @@ recommended_models:
 將指定頁面設為 archived。
 定位方式（二擇一）：`page_id`（UUID）或 `keyword`（以名稱查找，僅匹配 1 筆時自動執行）。
 
-### delete_batch — 條件式批次刪除
+### delete_batch — 條件式批次刪除（兩段式）
 
-依篩選條件查出多筆後，逐筆封存。
-- 篩選參數：`filter_status`、`filter_date`、`filter_due_date`、`filter_assignee`、`filter_project`、`keyword`、`page_ids`（JSON Array）
-- 範例：刪除所有已完成項目 → `filter_status="已完成"`
-- 範例：刪除 04/15 之前的項目 → `filter_date="before:2026-04-15"`
+依篩選條件查出多筆後，逐筆封存。為避免誤刪，採用**兩段式流程**：
+
+**第一次呼叫**（只帶 filter_*，不帶 confirm）→ 回傳 `status: "preview"` 與命中清單（含 page_ids），**不會刪除任何資料**。
+**第二次呼叫**有兩種等效方式：
+1. 帶 `confirm=true` + 相同的 filter_* 條件 → 以相同條件重查並執行
+2. 直接帶 `page_ids`（從 preview 回傳取得）→ 跳過確認直接執行
+
+- 篩選參數：`filter_status`、`filter_date`、`filter_due_date`、`filter_hours`、`filter_assignee`、`filter_project`、`keyword`、`filter_logic`（`and` / `or`，預設 `and`）
+- 直接參數：`page_ids`（JSON Array，帶此參數視為已確認）
+- 範例：刪除所有已完成項目 → `filter_status="已完成"` → preview → `confirm=true`
+- 範例：刪除到期日是明天的 → `filter_due_date="2026-04-17"` → preview → `confirm=true`
+- 範例：刪除 04/15 之前的項目 → `filter_date="before:2026-04-15"` → preview → `confirm=true`
+
+## 參數前綴規則（避免混淆）
+
+不同 action 對「到期日/狀態/負責人/專案」使用不同前綴，請嚴格依下表選用：
+
+| Action | 設定到期日 | 設定狀態 | 設定負責人 | 設定專案 |
+|--------|-----------|---------|-----------|---------|
+| `create` | `due_date` | `status` | `assignee` | `project` |
+| `update` | `due_date` | `status` | `assignee` | `project` |
+| `update_batch` | `set_due_date` | `set_status` | `set_assignee` | `set_project` |
+| `list` / `delete_batch` | ❌ 不設定 | ❌ 不設定 | ❌ 不設定 | ❌ 不設定 |
+
+`filter_*` 前綴**只用於篩選**（list / update_batch / delete_batch 找出目標），絕不用於設定目標值。
+
+### ❌ 錯誤範例
+
+```json
+// 錯：把「設定新到期日」誤用為 filter
+{"action": "update", "page_id": "xxx", "filter_due_date": "2026-04-17"}
+
+// 錯：單筆 update 用了 update_batch 的 set_ 前綴
+{"action": "update", "page_id": "xxx", "set_due_date": "2026-04-17"}
+```
+
+### ✅ 正確範例
+
+```json
+// 單筆更新到期日
+{"action": "update", "page_id": "xxx", "due_date": "2026-04-17"}
+
+// 批次更新到期日（依條件篩選後統一設定）
+{"action": "update_batch", "filter_date": "2026-04-15", "set_due_date": "2026-04-17"}
+
+// 查詢到期日在某日前的項目
+{"action": "list", "filter_due_date": "before:2026-04-17"}
+```
+
+> 註：為容錯，系統會在 `create` / `update` 收到 `filter_*` 或 `set_*` 前綴時自動映射為直接欄位值，但仍請依正確命名呼叫以免語意誤判。
 
 ## 篩選語法說明
 
@@ -116,6 +166,12 @@ recommended_models:
 | `filter_due_date` | `"upcoming"` | 未來 7 天內到期 |
 | `filter_due_date` | `"before:2026-04-15"` | 到期日在該日之前 |
 | `filter_due_date` | `"after:2026-04-15"` | 到期日在該日之後 |
+| `filter_due_date` | `"2026-04-15:2026-04-20"` | 到期日範圍 |
+| `filter_hours` | `"8"` | 工時等於 8 |
+| `filter_hours` | `">=8"` / `">8"` | 工時大於等於 / 大於 |
+| `filter_hours` | `"<=4"` / `"<4"` | 工時小於等於 / 小於 |
+| `filter_hours` | `"5:10"` | 工時範圍 [5, 10] |
+| `filter_logic` | `"and"` (預設) / `"or"` | 多個 filter_* 以 AND 或 OR 串接 |
 
 ## 環境變數需求
 
