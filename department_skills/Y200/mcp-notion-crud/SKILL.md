@@ -6,7 +6,7 @@ category: Department
 provider: mcp
 version: "1.0.0"
 description: >
-  Notion ToDo 資料庫完整操作工具。支援新增、查詢、更新、刪除待辦事項， 以及從結構化會議資料批次匯入。 當使用者提到「查待辦」「我的任務」「Notion 進度」「todo list」 「哪些未完成」「任務查詢」「待辦清單」「進度查詢」 「新增待辦」「加一筆任務」「建立todo」 「更新待辦」「改狀態」「標記完成」「修改todo」 「刪除任務」「移除待辦」「刪掉那筆」 「上傳Notion」「寫入Notion」「匯入待辦」時觸發此技能。 【必填參數】呼叫此工具時必須傳入 action 參數，可選值： create（新增單筆，需帶 todo_title）、 create_batch（批次匯入，需帶 items_json 或 cleaned_text + org_data_json）、 list（查詢列表，可帶 filter_status / filter_assignee / filter_project / keyword / filter_date， 例如查今天建立的項目請用 filter_date="today"）、 summary（進度摘要，無額外參數）、 update（更新欄位，需帶 page_id）、 delete（封存刪除，需帶 page_id）。
+  Notion ToDo 資料庫完整操作工具。支援新增、查詢、更新、刪除待辦事項， 以及從結構化會議資料批次匯入。 當使用者提到「查待辦」「我的任務」「Notion 進度」「todo list」 「哪些未完成」「任務查詢」「待辦清單」「進度查詢」 「新增待辦」「加一筆任務」「建立todo」 「更新待辦」「改狀態」「標記完成」「修改todo」 「刪除任務」「移除待辦」「刪掉那筆」 「上傳Notion」「寫入Notion」「匯入待辦」時觸發此技能。 【必填參數】呼叫此工具時必須傳入 action 參數，可選值： create（新增單筆，需帶 todo_title）、 create_batch（批次匯入，需帶 items_json 或 cleaned_text + org_data_json）、 list（查詢列表，可帶 filter_status / filter_assignee / filter_project / keyword / filter_date， 例如查今天建立的項目請用 filter_date="today"）、 summary（進度摘要，無額外參數）、 update（更新欄位，需帶 page_id）、 delete（封存刪除，需帶 page_id）。 【重要】update 和 delete 的 page_id 必須是 Notion UUID 格式（如 "343e791c-b3f0-8130-8b47-c0e50ee40a53"），不可使用序號（如 "1"、"2"）。請從 list 查詢結果中的 page_id 欄位取得正確的 UUID 值。若使用者說「刪除第N項」或「更新第N項」，請先比對先前 list 結果找出對應的 page_id UUID 後再呼叫。
 runtime_requirements: [requests, openai]
 risk_level: low
 risk_description: >

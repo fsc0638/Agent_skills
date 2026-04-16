@@ -681,6 +681,11 @@ def action_update(token: str, page_id: str, status: str | None,
                   assignee: str | None, due_date: str | None,
                   project: str | None, todo_title: str | None) -> dict:
     """Update specified fields on a Notion page."""
+    if not _is_valid_uuid(page_id):
+        return {"status": "error", "action": "update", "page_id": page_id,
+                "message": f"page_id 格式錯誤：'{page_id}' 不是有效的 UUID。"
+                           f"請使用 action=list 查詢結果中的 page_id（UUID 格式，如 343e791c-b3f0-8130-8b47-c0e50ee40a53），"
+                           f"不可使用序號（如 1、2、3）。"}
     properties = {}
     updated_fields = []
 
@@ -721,8 +726,22 @@ def action_update(token: str, page_id: str, status: str | None,
                 "message": f"Notion API 錯誤：{err.get('message', resp.status_code)}"}
 
 
+def _is_valid_uuid(value: str) -> bool:
+    """Check if a string is a valid UUID format."""
+    uuid_pattern = re.compile(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+        re.IGNORECASE
+    )
+    return bool(uuid_pattern.match(value))
+
+
 def action_delete(token: str, page_id: str) -> dict:
     """Archive a Notion page (soft delete)."""
+    if not _is_valid_uuid(page_id):
+        return {"status": "error", "action": "delete", "page_id": page_id,
+                "message": f"page_id 格式錯誤：'{page_id}' 不是有效的 UUID。"
+                           f"請使用 action=list 查詢結果中的 page_id（UUID 格式，如 343e791c-b3f0-8130-8b47-c0e50ee40a53），"
+                           f"不可使用序號（如 1、2、3）。"}
     resp = requests.patch(
         f"{NOTION_API_BASE}/pages/{page_id}",
         headers=_headers(token), json={"archived": True}, timeout=15,
