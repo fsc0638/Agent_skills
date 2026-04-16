@@ -805,6 +805,14 @@ def _is_valid_uuid(value: str) -> bool:
     return bool(uuid_pattern.match(value))
 
 
+def _is_already_archived_message(message: str) -> bool:
+    msg = (message or "").lower()
+    return (
+        "can't edit block that is archived" in msg
+        or ("archived" in msg and "unarchive" in msg)
+    )
+
+
 def action_delete(token: str, page_id: str, keyword: str | None = None,
                   db_id: str | None = None) -> dict:
     """Archive a Notion page (soft delete). Supports keyword lookup if page_id is empty."""
@@ -838,8 +846,13 @@ def action_delete(token: str, page_id: str, keyword: str | None = None,
                 "message": "已成功封存該待辦項目（可在 Notion 垃圾桶中還原）"}
     else:
         err = resp.json()
+        err_msg = err.get("message", str(resp.status_code))
+        if _is_already_archived_message(err_msg):
+            return {"status": "success", "action": "delete", "page_id": page_id,
+                    "already_archived": True,
+                    "message": "Item is already archived; treated as successful delete."}
         return {"status": "error", "action": "delete", "page_id": page_id,
-                "message": f"Notion API 錯誤：{err.get('message', resp.status_code)}"}
+                "message": f"Notion API 錯誤：{err_msg}"}
 
 
 # ── Batch Delete / Batch Update ─────────────────────────────────────────────
@@ -961,10 +974,17 @@ def action_delete_batch(token: str, db_id: str,
                 results.append({"page_id": pid, "_action": "archived"})
             else:
                 err = resp.json()
-                results.append({"page_id": pid, "_action": "error",
-                               "_error": err.get("message", str(resp.status_code))})
+                err_msg = err.get("message", str(resp.status_code))
+                if _is_already_archived_message(err_msg):
+                    results.append({"page_id": pid, "_action": "archived", "_already_archived": True})
+                else:
+                    results.append({"page_id": pid, "_action": "error", "_error": err_msg})
         except Exception as e:
-            results.append({"page_id": pid, "_action": "error", "_error": str(e)})
+            err_msg = str(e)
+            if _is_already_archived_message(err_msg):
+                results.append({"page_id": pid, "_action": "archived", "_already_archived": True})
+            else:
+                results.append({"page_id": pid, "_action": "error", "_error": err_msg})
 
         # Rate limit: Notion allows ~3 req/s
         if (i + 1) % 3 == 0:
