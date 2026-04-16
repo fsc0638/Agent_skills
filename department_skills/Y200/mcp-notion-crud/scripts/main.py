@@ -42,6 +42,18 @@ PROMPTS_DIR = SKILL_DIR / "prompts"
 LLM_MODEL = os.getenv("MEETING_LLM_MODEL", "gpt-4.1-mini")
 
 
+def _safe_int_env(name: str, default: int) -> int:
+    raw = os.getenv(name, str(default)).strip()
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+# Safety guard: prevent accidental large destructive operations.
+MAX_SAFE_BATCH_DELETE = max(1, min(_safe_int_env("NOTION_MAX_SAFE_BATCH_DELETE", 20), 200))
+
+
 def _headers(token: str) -> dict:
     return {
         "Authorization": f"Bearer {token}",
@@ -53,7 +65,7 @@ def _headers(token: str) -> dict:
 # ── Notion Query ─────────────────────────────────────────────────────────────
 
 def query_database(token: str, database_id: str, filter_obj: dict | None = None,
-                   page_size: int = 100, max_pages: int = 3) -> list:
+                   page_size: int = 100, max_pages: int = 10) -> list:
     """Query Notion database with optional filter. Handles pagination."""
     headers = _headers(token)
     all_results = []
@@ -647,10 +659,10 @@ def action_create_batch(token: str, db_id: str, items_json: str | None,
 
 def action_list(token: str, db_id: str, filter_status: str | None,
                 filter_assignee: str | None, filter_project: str | None,
-                keyword: str | None, limit: int,
+                keyword: str | None, limit: int, offset: int = 0,
                 filter_date: str | None = None,
                 filter_due_date: str | None = None) -> dict:
-    """List todo items with filters."""
+    """List todo items with filters. Supports offset-based pagination."""
     notion_filter = build_notion_filter(filter_status, filter_assignee, filter_project,
                                         filter_date, filter_due_date)
     pages = query_database(token, db_id, filter_obj=notion_filter)
@@ -660,7 +672,7 @@ def action_list(token: str, db_id: str, filter_status: str | None,
         items = apply_keyword_filter(items, keyword)
 
     total = len(items)
-    items = items[:limit]
+    items = items[offset:offset + limit]
 
     clean_items = []
     for item in items:
@@ -669,8 +681,13 @@ def action_list(token: str, db_id: str, filter_status: str | None,
             clean["page_id"] = clean.pop("_page_id")
         clean_items.append(clean)
 
-    return {"status": "success", "action": "list", "total": total,
-            "returned": len(clean_items), "items": clean_items}
+    result = {"status": "success", "action": "list", "total": total,
+              "returned": len(clean_items), "offset": offset, "limit": limit,
+              "items": clean_items}
+    if offset + limit < total:
+        result["next_offset"] = offset + limit
+        result["hint"] = f"還有 {total - offset - limit} 筆未顯示，請用 offset={offset + limit} 取得下一頁"
+    return result
 
 
 def action_summary(token: str, db_id: str) -> dict:
@@ -847,6 +864,36 @@ def _query_pages_by_filter(token: str, db_id: str,
     return items
 
 
+def _normalize_page_ids(page_ids: list | None) -> list[str]:
+    if not page_ids:
+        return []
+    normalized = []
+    for pid in page_ids:
+        if isinstance(pid, str):
+            clean = pid.strip()
+            if clean:
+                normalized.append(clean)
+    return normalized
+
+
+def _parse_page_ids_arg(page_ids_raw: str | None) -> tuple[list[str] | None, str | None]:
+    if not page_ids_raw:
+        return None, None
+    try:
+        parsed = json.loads(page_ids_raw)
+    except json.JSONDecodeError:
+        return None, "page_ids 參數格式錯誤：必須是 JSON 陣列，例如 [\"uuid-1\", \"uuid-2\"]"
+
+    if not isinstance(parsed, list):
+        return None, "page_ids 參數格式錯誤：必須是 JSON 陣列"
+
+    normalized = _normalize_page_ids(parsed)
+    if not normalized:
+        return None, "page_ids 參數不可為空陣列"
+
+    return normalized, None
+
+
 def action_delete_batch(token: str, db_id: str,
                         page_ids: list[str] | None = None,
                         filter_status: str | None = None,
@@ -857,9 +904,34 @@ def action_delete_batch(token: str, db_id: str,
                         keyword: str | None = None) -> dict:
     """Batch archive pages by page_ids or filter conditions."""
     headers = _headers(token)
+    page_ids = _normalize_page_ids(page_ids)
+
+    # Guardrail: destructive batch delete must be explicit page_id based.
+    if not page_ids:
+        provided_filters = {}
+        if filter_status:
+            provided_filters["filter_status"] = filter_status
+        if filter_assignee:
+            provided_filters["filter_assignee"] = filter_assignee
+        if filter_project:
+            provided_filters["filter_project"] = filter_project
+        if filter_date:
+            provided_filters["filter_date"] = filter_date
+        if filter_due_date:
+            provided_filters["filter_due_date"] = filter_due_date
+        if keyword:
+            provided_filters["keyword"] = keyword
+
+        return {
+            "status": "error",
+            "action": "delete_batch",
+            "message": "為避免誤刪，delete_batch 必須提供 page_ids(JSON 陣列 UUID)。請先用 action=list 取得目標 page_id，再執行刪除。",
+            "provided_filters": provided_filters,
+            "hint": "如果使用者指定「第N項」，請先依目前清單位置換算 page_id 後傳入 page_ids。",
+        }
 
     # If no page_ids provided, query by filter
-    if not page_ids:
+    if False and not page_ids:
         items = _query_pages_by_filter(token, db_id, filter_status, filter_assignee,
                                        filter_project, filter_date, filter_due_date, keyword)
         if not items:
@@ -867,6 +939,15 @@ def action_delete_batch(token: str, db_id: str,
                     "total": 0, "archived": 0, "errors": 0,
                     "message": "查無符合條件的待辦項目"}
         page_ids = [item["_page_id"] for item in items]
+
+    if len(page_ids) > MAX_SAFE_BATCH_DELETE:
+        return {
+            "status": "error",
+            "action": "delete_batch",
+            "message": f"單次 delete_batch 最多允許 {MAX_SAFE_BATCH_DELETE} 筆，請分批執行。",
+            "requested": len(page_ids),
+            "max_allowed": MAX_SAFE_BATCH_DELETE,
+        }
 
     results = []
     for i, pid in enumerate(page_ids):
@@ -1031,6 +1112,8 @@ def main():
         elif action == "list":
             limit = int(os.getenv("SKILL_PARAM_LIMIT", "20"))
             limit = max(1, min(limit, 100))
+            offset = int(os.getenv("SKILL_PARAM_OFFSET", "0"))
+            offset = max(0, offset)
             result = action_list(
                 token, db_id,
                 filter_status=os.getenv("SKILL_PARAM_FILTER_STATUS", "").strip() or None,
@@ -1038,6 +1121,7 @@ def main():
                 filter_project=os.getenv("SKILL_PARAM_FILTER_PROJECT", "").strip() or None,
                 keyword=os.getenv("SKILL_PARAM_KEYWORD", "").strip() or None,
                 limit=limit,
+                offset=offset,
                 filter_date=os.getenv("SKILL_PARAM_FILTER_DATE", "").strip() or None,
                 filter_due_date=os.getenv("SKILL_PARAM_FILTER_DUE_DATE", "").strip() or None,
             )
@@ -1074,7 +1158,10 @@ def main():
 
         elif action == "delete_batch":
             page_ids_raw = os.getenv("SKILL_PARAM_PAGE_IDS", "").strip()
-            page_ids = json.loads(page_ids_raw) if page_ids_raw else None
+            page_ids, parse_error = _parse_page_ids_arg(page_ids_raw)
+            if parse_error:
+                print(json.dumps({"status": "error", "action": "delete_batch", "message": parse_error}, ensure_ascii=False))
+                return
             result = action_delete_batch(
                 token, db_id, page_ids,
                 filter_status=os.getenv("SKILL_PARAM_FILTER_STATUS", "").strip() or None,
@@ -1087,7 +1174,10 @@ def main():
 
         elif action == "update_batch":
             page_ids_raw = os.getenv("SKILL_PARAM_PAGE_IDS", "").strip()
-            page_ids = json.loads(page_ids_raw) if page_ids_raw else None
+            page_ids, parse_error = _parse_page_ids_arg(page_ids_raw)
+            if parse_error:
+                print(json.dumps({"status": "error", "action": "update_batch", "message": parse_error}, ensure_ascii=False))
+                return
             result = action_update_batch(
                 token, db_id, page_ids,
                 filter_status=os.getenv("SKILL_PARAM_FILTER_STATUS", "").strip() or None,
