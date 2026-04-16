@@ -2,18 +2,26 @@
 mcp-notion-crud — Notion ToDo 資料庫完整 CRUD 操作
 
 支援動作:
-  create:       新增單筆 ToDo
+  create:        新增單筆 ToDo
   create_batch:  批次匯入（支援 Schema Mapping + Upsert）
   list:          依條件篩選待辦事項
   summary:       整體進度摘要
-  update:        更新指定頁面欄位
-  delete:        封存（軟刪除）指定頁面
+  update:        更新指定頁面欄位（支援 keyword 定位）
+  update_batch:  條件式批次更新（依篩選條件批量修改欄位）
+  delete:        封存（軟刪除）指定頁面（支援 keyword 定位）
+  delete_batch:  條件式批次刪除（依篩選條件批量封存）
+
+篩選語法:
+  filter_status:   "已完成" | "not:已完成"
+  filter_date:     "today" | "2026-04-15" | "before:2026-04-15" | "after:2026-04-15" | "2026-04-01:2026-04-15"
+  filter_due_date: "overdue" | "upcoming" | "before:2026-04-15" | "after:2026-04-15" | "2026-04-15" | "range"
 """
 
 import os
 import sys
 import json
 import re
+import time
 import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -139,42 +147,74 @@ def build_notion_filter(filter_status: str | None, filter_assignee: str | None,
                         filter_due_date: str | None) -> dict | None:
     conditions = []
     if filter_status:
-        conditions.append({"property": "狀態", "status": {"equals": filter_status}})
+        # filter_status supports:
+        #   "已完成"           → 精確匹配
+        #   "not:已完成"       → 排除該狀態（用於查「所有未完成」）
+        fs = filter_status.strip()
+        if fs.lower().startswith("not:"):
+            status_val = fs.split(":", 1)[1].strip()
+            conditions.append({"property": "狀態", "status": {"does_not_equal": status_val}})
+        else:
+            conditions.append({"property": "狀態", "status": {"equals": fs}})
     if filter_assignee:
         conditions.append({"property": "負責人 / PM", "multi_select": {"contains": filter_assignee}})
     if filter_project:
         conditions.append({"property": "專案", "multi_select": {"contains": filter_project}})
     if filter_date:
-        # filter_date supports: "today", "yyyy-mm-dd" (exact date), "yyyy-mm-dd:yyyy-mm-dd" (range)
-        if filter_date.lower() == "today":
+        # filter_date supports:
+        #   "today"                        → 今天建立的
+        #   "yyyy-mm-dd"                   → 該日建立的（精確）
+        #   "yyyy-mm-dd:yyyy-mm-dd"        → 範圍
+        #   "before:yyyy-mm-dd"            → 該日之前建立的
+        #   "after:yyyy-mm-dd"             → 該日之後建立的（含當日）
+        fd = filter_date.strip()
+        if fd.lower() == "today":
             today = datetime.now().strftime("%Y-%m-%d")
             conditions.append({"timestamp": "created_time", "created_time": {"on_or_after": today}})
-        elif ":" in filter_date:
-            parts = filter_date.split(":", 1)
+        elif fd.lower().startswith("before:"):
+            date_val = fd.split(":", 1)[1].strip()
+            conditions.append({"timestamp": "created_time", "created_time": {"before": date_val}})
+        elif fd.lower().startswith("after:"):
+            date_val = fd.split(":", 1)[1].strip()
+            conditions.append({"timestamp": "created_time", "created_time": {"on_or_after": date_val}})
+        elif ":" in fd and not fd.startswith(("before", "after")):
+            parts = fd.split(":", 1)
             conditions.append({"timestamp": "created_time", "created_time": {"on_or_after": parts[0].strip()}})
-            # Add 1 day to end date for exclusive upper bound
             end_dt = datetime.strptime(parts[1].strip(), "%Y-%m-%d") + timedelta(days=1)
             conditions.append({"timestamp": "created_time", "created_time": {"before": end_dt.strftime("%Y-%m-%d")}})
         else:
-            conditions.append({"timestamp": "created_time", "created_time": {"on_or_after": filter_date}})
-            end_dt = datetime.strptime(filter_date, "%Y-%m-%d") + timedelta(days=1)
+            conditions.append({"timestamp": "created_time", "created_time": {"on_or_after": fd}})
+            end_dt = datetime.strptime(fd, "%Y-%m-%d") + timedelta(days=1)
             conditions.append({"timestamp": "created_time", "created_time": {"before": end_dt.strftime("%Y-%m-%d")}})
     if filter_due_date:
-        # filter_due_date: "yyyy-mm-dd" (exact), "yyyy-mm-dd:yyyy-mm-dd" (range), "overdue", "upcoming"
-        if filter_due_date.lower() == "overdue":
+        # filter_due_date supports:
+        #   "yyyy-mm-dd"                   → 精確到期日
+        #   "yyyy-mm-dd:yyyy-mm-dd"        → 範圍
+        #   "before:yyyy-mm-dd"            → 該日之前到期
+        #   "after:yyyy-mm-dd"             → 該日之後到期（含當日）
+        #   "overdue"                      → 已逾期
+        #   "upcoming"                     → 未來 7 天內到期
+        fdd = filter_due_date.strip()
+        if fdd.lower() == "overdue":
             today = datetime.now().strftime("%Y-%m-%d")
             conditions.append({"property": "到期日", "date": {"before": today}})
-        elif filter_due_date.lower() == "upcoming":
+        elif fdd.lower() == "upcoming":
             today = datetime.now().strftime("%Y-%m-%d")
             week_later = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
             conditions.append({"property": "到期日", "date": {"on_or_after": today}})
             conditions.append({"property": "到期日", "date": {"on_or_before": week_later}})
-        elif ":" in filter_due_date:
-            parts = filter_due_date.split(":", 1)
+        elif fdd.lower().startswith("before:"):
+            date_val = fdd.split(":", 1)[1].strip()
+            conditions.append({"property": "到期日", "date": {"before": date_val}})
+        elif fdd.lower().startswith("after:"):
+            date_val = fdd.split(":", 1)[1].strip()
+            conditions.append({"property": "到期日", "date": {"on_or_after": date_val}})
+        elif ":" in fdd and not fdd.startswith(("before", "after")):
+            parts = fdd.split(":", 1)
             conditions.append({"property": "到期日", "date": {"on_or_after": parts[0].strip()}})
             conditions.append({"property": "到期日", "date": {"on_or_before": parts[1].strip()}})
         else:
-            conditions.append({"property": "到期日", "date": {"equals": filter_due_date}})
+            conditions.append({"property": "到期日", "date": {"equals": fdd}})
     if not conditions:
         return None
     if len(conditions) == 1:
@@ -679,13 +719,29 @@ def action_summary(token: str, db_id: str) -> dict:
 
 def action_update(token: str, page_id: str, status: str | None,
                   assignee: str | None, due_date: str | None,
-                  project: str | None, todo_title: str | None) -> dict:
-    """Update specified fields on a Notion page."""
-    if not _is_valid_uuid(page_id):
-        return {"status": "error", "action": "update", "page_id": page_id,
-                "message": f"page_id 格式錯誤：'{page_id}' 不是有效的 UUID。"
+                  project: str | None, todo_title: str | None,
+                  keyword: str | None = None, db_id: str | None = None) -> dict:
+    """Update specified fields on a Notion page. Supports keyword lookup if page_id is empty."""
+    # Keyword lookup: find page_id by searching todo title
+    if not page_id and keyword and db_id:
+        items = _query_pages_by_filter(token, db_id, keyword=keyword)
+        if len(items) == 0:
+            return {"status": "error", "action": "update",
+                    "message": f"找不到包含「{keyword}」的待辦項目"}
+        if len(items) == 1:
+            page_id = items[0]["_page_id"]
+        else:
+            candidates = [{"ToDo": it.get("ToDo", ""), "page_id": it["_page_id"],
+                           "狀態": it.get("狀態", "")} for it in items[:10]]
+            return {"status": "error", "action": "update",
+                    "message": f"找到 {len(items)} 筆符合「{keyword}」的項目，請指定 page_id",
+                    "candidates": candidates}
+
+    if not page_id or not _is_valid_uuid(page_id):
+        return {"status": "error", "action": "update", "page_id": page_id or "",
+                "message": f"page_id 格式錯誤：'{page_id or ''}' 不是有效的 UUID。"
                            f"請使用 action=list 查詢結果中的 page_id（UUID 格式，如 343e791c-b3f0-8130-8b47-c0e50ee40a53），"
-                           f"不可使用序號（如 1、2、3）。"}
+                           f"不可使用序號（如 1、2、3）。也可傳入 keyword 參數以名稱查找。"}
     properties = {}
     updated_fields = []
 
@@ -735,13 +791,29 @@ def _is_valid_uuid(value: str) -> bool:
     return bool(uuid_pattern.match(value))
 
 
-def action_delete(token: str, page_id: str) -> dict:
-    """Archive a Notion page (soft delete)."""
-    if not _is_valid_uuid(page_id):
-        return {"status": "error", "action": "delete", "page_id": page_id,
-                "message": f"page_id 格式錯誤：'{page_id}' 不是有效的 UUID。"
+def action_delete(token: str, page_id: str, keyword: str | None = None,
+                  db_id: str | None = None) -> dict:
+    """Archive a Notion page (soft delete). Supports keyword lookup if page_id is empty."""
+    # Keyword lookup: find page_id by searching todo title
+    if not page_id and keyword and db_id:
+        items = _query_pages_by_filter(token, db_id, keyword=keyword)
+        if len(items) == 0:
+            return {"status": "error", "action": "delete",
+                    "message": f"找不到包含「{keyword}」的待辦項目"}
+        if len(items) == 1:
+            page_id = items[0]["_page_id"]
+        else:
+            candidates = [{"ToDo": it.get("ToDo", ""), "page_id": it["_page_id"],
+                           "狀態": it.get("狀態", "")} for it in items[:10]]
+            return {"status": "error", "action": "delete",
+                    "message": f"找到 {len(items)} 筆符合「{keyword}」的項目，請指定 page_id",
+                    "candidates": candidates}
+
+    if not page_id or not _is_valid_uuid(page_id):
+        return {"status": "error", "action": "delete", "page_id": page_id or "",
+                "message": f"page_id 格式錯誤：'{page_id or ''}' 不是有效的 UUID。"
                            f"請使用 action=list 查詢結果中的 page_id（UUID 格式，如 343e791c-b3f0-8130-8b47-c0e50ee40a53），"
-                           f"不可使用序號（如 1、2、3）。"}
+                           f"不可使用序號（如 1、2、3）。也可傳入 keyword 參數以名稱查找。"}
     resp = requests.patch(
         f"{NOTION_API_BASE}/pages/{page_id}",
         headers=_headers(token), json={"archived": True}, timeout=15,
@@ -754,6 +826,160 @@ def action_delete(token: str, page_id: str) -> dict:
         err = resp.json()
         return {"status": "error", "action": "delete", "page_id": page_id,
                 "message": f"Notion API 錯誤：{err.get('message', resp.status_code)}"}
+
+
+# ── Batch Delete / Batch Update ─────────────────────────────────────────────
+
+def _query_pages_by_filter(token: str, db_id: str,
+                           filter_status: str | None = None,
+                           filter_assignee: str | None = None,
+                           filter_project: str | None = None,
+                           filter_date: str | None = None,
+                           filter_due_date: str | None = None,
+                           keyword: str | None = None) -> list:
+    """Query pages using filters and return parsed items with page IDs."""
+    notion_filter = build_notion_filter(filter_status, filter_assignee,
+                                        filter_project, filter_date, filter_due_date)
+    pages = query_database(token, db_id, filter_obj=notion_filter, max_pages=5)
+    items = [parse_page(p) for p in pages]
+    if keyword:
+        items = apply_keyword_filter(items, keyword)
+    return items
+
+
+def action_delete_batch(token: str, db_id: str,
+                        page_ids: list[str] | None = None,
+                        filter_status: str | None = None,
+                        filter_assignee: str | None = None,
+                        filter_project: str | None = None,
+                        filter_date: str | None = None,
+                        filter_due_date: str | None = None,
+                        keyword: str | None = None) -> dict:
+    """Batch archive pages by page_ids or filter conditions."""
+    headers = _headers(token)
+
+    # If no page_ids provided, query by filter
+    if not page_ids:
+        items = _query_pages_by_filter(token, db_id, filter_status, filter_assignee,
+                                       filter_project, filter_date, filter_due_date, keyword)
+        if not items:
+            return {"status": "success", "action": "delete_batch",
+                    "total": 0, "archived": 0, "errors": 0,
+                    "message": "查無符合條件的待辦項目"}
+        page_ids = [item["_page_id"] for item in items]
+
+    results = []
+    for i, pid in enumerate(page_ids):
+        if not _is_valid_uuid(pid):
+            results.append({"page_id": pid, "_action": "error",
+                           "_error": "無效的 UUID 格式"})
+            continue
+        try:
+            resp = requests.patch(
+                f"{NOTION_API_BASE}/pages/{pid}",
+                headers=headers, json={"archived": True}, timeout=15,
+            )
+            if resp.ok:
+                results.append({"page_id": pid, "_action": "archived"})
+            else:
+                err = resp.json()
+                results.append({"page_id": pid, "_action": "error",
+                               "_error": err.get("message", str(resp.status_code))})
+        except Exception as e:
+            results.append({"page_id": pid, "_action": "error", "_error": str(e)})
+
+        # Rate limit: Notion allows ~3 req/s
+        if (i + 1) % 3 == 0:
+            time.sleep(1.0)
+
+    archived = sum(1 for r in results if r.get("_action") == "archived")
+    errored = sum(1 for r in results if r.get("_action") == "error")
+
+    return {"status": "success", "action": "delete_batch",
+            "total": len(results), "archived": archived, "errors": errored,
+            "message": f"已封存 {archived} 筆待辦項目（{errored} 筆失敗）",
+            "items": results}
+
+
+def action_update_batch(token: str, db_id: str,
+                        page_ids: list[str] | None = None,
+                        filter_status: str | None = None,
+                        filter_assignee: str | None = None,
+                        filter_project: str | None = None,
+                        filter_date: str | None = None,
+                        filter_due_date: str | None = None,
+                        keyword: str | None = None,
+                        set_status: str | None = None,
+                        set_assignee: str | None = None,
+                        set_due_date: str | None = None,
+                        set_project: str | None = None) -> dict:
+    """Batch update pages by page_ids or filter conditions."""
+    headers = _headers(token)
+
+    # Build the properties to set
+    properties = {}
+    updated_fields = []
+    if set_status:
+        properties["狀態"] = {"status": {"name": set_status}}
+        updated_fields.append("狀態")
+    if set_assignee:
+        names = [n.strip() for n in set_assignee.split(",") if n.strip()]
+        properties["負責人 / PM"] = {"multi_select": [{"name": n} for n in names]}
+        updated_fields.append("負責人")
+    if set_due_date:
+        properties["到期日"] = {"date": {"start": set_due_date}}
+        updated_fields.append("到期日")
+    if set_project:
+        names = [n.strip() for n in set_project.split(",") if n.strip()]
+        properties["專案"] = {"multi_select": [{"name": n} for n in names]}
+        updated_fields.append("專案")
+
+    if not properties:
+        return {"status": "error", "action": "update_batch",
+                "message": "未指定任何要更新的欄位（set_status / set_assignee / set_due_date / set_project）"}
+
+    # If no page_ids provided, query by filter
+    if not page_ids:
+        items = _query_pages_by_filter(token, db_id, filter_status, filter_assignee,
+                                       filter_project, filter_date, filter_due_date, keyword)
+        if not items:
+            return {"status": "success", "action": "update_batch",
+                    "total": 0, "updated": 0, "errors": 0,
+                    "message": "查無符合條件的待辦項目"}
+        page_ids = [item["_page_id"] for item in items]
+
+    results = []
+    for i, pid in enumerate(page_ids):
+        if not _is_valid_uuid(pid):
+            results.append({"page_id": pid, "_action": "error",
+                           "_error": "無效的 UUID 格式"})
+            continue
+        try:
+            resp = requests.patch(
+                f"{NOTION_API_BASE}/pages/{pid}",
+                headers=headers, json={"properties": properties}, timeout=15,
+            )
+            if resp.ok:
+                results.append({"page_id": pid, "_action": "updated"})
+            else:
+                err = resp.json()
+                results.append({"page_id": pid, "_action": "error",
+                               "_error": err.get("message", str(resp.status_code))})
+        except Exception as e:
+            results.append({"page_id": pid, "_action": "error", "_error": str(e)})
+
+        # Rate limit: Notion allows ~3 req/s
+        if (i + 1) % 3 == 0:
+            time.sleep(1.0)
+
+    updated = sum(1 for r in results if r.get("_action") == "updated")
+    errored = sum(1 for r in results if r.get("_action") == "error")
+
+    return {"status": "success", "action": "update_batch",
+            "total": len(results), "updated": updated, "errors": errored,
+            "updated_fields": updated_fields,
+            "message": f"已更新 {updated} 筆待辦項目的 {'、'.join(updated_fields)}（{errored} 筆失敗）",
+            "items": results}
 
 
 # ── Main Entry Point ─────────────────────────────────────────────────────────
@@ -769,7 +995,9 @@ def main():
         print(json.dumps({"status": "error", "message": "缺少 NOTION_TOKEN，請在 .env 中配置"}, ensure_ascii=False))
         return
 
-    if action in ("create", "create_batch", "list", "summary") and not db_id:
+    db_id_actions = ("create", "create_batch", "list", "summary",
+                      "delete_batch", "update_batch")
+    if action in db_id_actions and not db_id:
         print(json.dumps({"status": "error", "message": "缺少 NOTION_DATABASE_ID，請在 .env 中配置"}, ensure_ascii=False))
         return
 
@@ -819,30 +1047,64 @@ def main():
 
         elif action == "update":
             page_id = os.getenv("SKILL_PARAM_PAGE_ID", "").strip()
-            if not page_id:
+            keyword = os.getenv("SKILL_PARAM_KEYWORD", "").strip() or None
+            if not page_id and not keyword:
                 print(json.dumps({"status": "error", "action": "update",
-                                  "message": "缺少 page_id 參數"}, ensure_ascii=False))
+                                  "message": "請提供 page_id 或 keyword 參數"}, ensure_ascii=False))
                 return
             result = action_update(
-                token, page_id,
+                token, page_id or "",
                 status=os.getenv("SKILL_PARAM_STATUS", "").strip() or None,
                 assignee=os.getenv("SKILL_PARAM_ASSIGNEE", "").strip() or None,
                 due_date=os.getenv("SKILL_PARAM_DUE_DATE", "").strip() or None,
                 project=os.getenv("SKILL_PARAM_PROJECT", "").strip() or None,
                 todo_title=os.getenv("SKILL_PARAM_TODO_TITLE", "").strip() or None,
+                keyword=keyword,
+                db_id=db_id,
             )
 
         elif action == "delete":
             page_id = os.getenv("SKILL_PARAM_PAGE_ID", "").strip()
-            if not page_id:
+            keyword = os.getenv("SKILL_PARAM_KEYWORD", "").strip() or None
+            if not page_id and not keyword:
                 print(json.dumps({"status": "error", "action": "delete",
-                                  "message": "缺少 page_id 參數"}, ensure_ascii=False))
+                                  "message": "請提供 page_id 或 keyword 參數"}, ensure_ascii=False))
                 return
-            result = action_delete(token, page_id)
+            result = action_delete(token, page_id or "", keyword=keyword, db_id=db_id)
+
+        elif action == "delete_batch":
+            page_ids_raw = os.getenv("SKILL_PARAM_PAGE_IDS", "").strip()
+            page_ids = json.loads(page_ids_raw) if page_ids_raw else None
+            result = action_delete_batch(
+                token, db_id, page_ids,
+                filter_status=os.getenv("SKILL_PARAM_FILTER_STATUS", "").strip() or None,
+                filter_assignee=os.getenv("SKILL_PARAM_FILTER_ASSIGNEE", "").strip() or None,
+                filter_project=os.getenv("SKILL_PARAM_FILTER_PROJECT", "").strip() or None,
+                filter_date=os.getenv("SKILL_PARAM_FILTER_DATE", "").strip() or None,
+                filter_due_date=os.getenv("SKILL_PARAM_FILTER_DUE_DATE", "").strip() or None,
+                keyword=os.getenv("SKILL_PARAM_KEYWORD", "").strip() or None,
+            )
+
+        elif action == "update_batch":
+            page_ids_raw = os.getenv("SKILL_PARAM_PAGE_IDS", "").strip()
+            page_ids = json.loads(page_ids_raw) if page_ids_raw else None
+            result = action_update_batch(
+                token, db_id, page_ids,
+                filter_status=os.getenv("SKILL_PARAM_FILTER_STATUS", "").strip() or None,
+                filter_assignee=os.getenv("SKILL_PARAM_FILTER_ASSIGNEE", "").strip() or None,
+                filter_project=os.getenv("SKILL_PARAM_FILTER_PROJECT", "").strip() or None,
+                filter_date=os.getenv("SKILL_PARAM_FILTER_DATE", "").strip() or None,
+                filter_due_date=os.getenv("SKILL_PARAM_FILTER_DUE_DATE", "").strip() or None,
+                keyword=os.getenv("SKILL_PARAM_KEYWORD", "").strip() or None,
+                set_status=os.getenv("SKILL_PARAM_SET_STATUS", "").strip() or None,
+                set_assignee=os.getenv("SKILL_PARAM_SET_ASSIGNEE", "").strip() or None,
+                set_due_date=os.getenv("SKILL_PARAM_SET_DUE_DATE", "").strip() or None,
+                set_project=os.getenv("SKILL_PARAM_SET_PROJECT", "").strip() or None,
+            )
 
         else:
             result = {"status": "error",
-                      "message": f"不支援的動作：{action}，請使用 create/create_batch/list/summary/update/delete"}
+                      "message": f"不支援的動作：{action}，請使用 create/create_batch/list/summary/update/update_batch/delete/delete_batch"}
 
         print(json.dumps(result, ensure_ascii=False))
 
