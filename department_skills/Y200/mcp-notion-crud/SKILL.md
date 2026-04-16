@@ -35,7 +35,10 @@ description: >
   【分頁參數】list 預設每次回傳 20 筆（limit=20），若 total 大於 returned，
   回傳結果會包含 next_offset 值，請用 offset=next_offset 取得下一頁，直到所有資料取完。
   使用者要求「列出全部」時，請自動用 offset 逐頁取完所有資料再一次呈現。
-  若使用者說「刪除第N項」或「更新第N項」，請先比對先前 list 結果找出對應的 page_id UUID 後再呼叫。
+  若使用者說「刪除第N項」或「更新第N項」，請從最近一次 list 回傳的 items[N-1].page_id 取 UUID 再呼叫。
+  【嚴禁 UUID 幻覺】絕不可從前一筆 UUID 修改幾個字元當新 UUID 使用；若對話史上找不到目標項目的 page_id，
+  請先重新呼叫 action=list（可帶 keyword 縮小範圍）取得 items[*].page_id 再刪除/更新，
+  或改用 action=delete/update 搭配 keyword 參數讓系統查找。
 runtime_requirements: [requests, openai]
 risk_level: low
 risk_description: >

@@ -726,7 +726,12 @@ def action_list(token: str, db_id: str, filter_status: str | None,
 
     result = {"status": "success", "action": "list", "total": total,
               "returned": len(clean_items), "offset": offset, "limit": limit,
-              "items": clean_items}
+              "items": clean_items,
+              "usage_hint": (
+                  "後續 update/delete 指定「第 N 筆」時，必須從 items[N-1].page_id 取用 UUID，"
+                  "嚴禁自行拼湊或推測 page_id。若使用者未明確指定筆數且只提供名稱，"
+                  "請用 keyword 參數（系統會以子字串匹配），或從 items 中找出名稱完全相符的那筆並複製其 page_id。"
+              )}
     if offset + limit < total:
         result["next_offset"] = offset + limit
         result["hint"] = f"還有 {total - offset - limit} 筆未顯示，請用 offset={offset + limit} 取得下一頁"
@@ -838,8 +843,16 @@ def action_update(token: str, page_id: str, status: str | None,
                 "message": f"已成功更新 {len(updated_fields)} 個欄位：{'、'.join(updated_fields)}"}
     else:
         err = resp.json()
+        err_msg = err.get("message", str(resp.status_code))
+        hint = ""
+        if "could not find page" in err_msg.lower():
+            hint = (
+                "（此 UUID 在 Notion 不存在，極可能是你從對話中推測或拼湊出來的。"
+                "請重新呼叫 action=list（可帶 keyword 或 filter_* 縮小範圍），"
+                "從結果的 items[*].page_id 取得實際 UUID 後再更新，嚴禁自行編造 page_id。）"
+            )
         return {"status": "error", "action": "update", "page_id": page_id,
-                "message": f"Notion API 錯誤：{err.get('message', resp.status_code)}"}
+                "message": f"Notion API 錯誤：{err_msg}{hint}"}
 
 
 def _is_valid_uuid(value: str) -> bool:
@@ -897,8 +910,15 @@ def action_delete(token: str, page_id: str, keyword: str | None = None,
             return {"status": "success", "action": "delete", "page_id": page_id,
                     "already_archived": True,
                     "message": "Item is already archived; treated as successful delete."}
+        hint = ""
+        if "could not find page" in err_msg.lower():
+            hint = (
+                "（此 UUID 在 Notion 不存在，極可能是你從對話中推測或拼湊出來的。"
+                "請重新呼叫 action=list（可帶 keyword 或 filter_* 縮小範圍），"
+                "從結果的 items[*].page_id 取得實際 UUID 後再刪除，嚴禁自行編造 page_id。）"
+            )
         return {"status": "error", "action": "delete", "page_id": page_id,
-                "message": f"Notion API 錯誤：{err_msg}"}
+                "message": f"Notion API 錯誤：{err_msg}{hint}"}
 
 
 # ── Batch Delete / Batch Update ─────────────────────────────────────────────
