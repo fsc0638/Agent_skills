@@ -38,11 +38,16 @@ input_schema:
   search_depth:
     type: string
     required: false
+    enum: ["basic", "advanced"]
+    default: "basic"
     description: "搜尋深度：'basic'（預設，快速）或 'advanced'（更深入）"
   max_results:
     type: integer
     required: false
-    description: "回傳最大結果數（預設 3）"
+    minimum: 1
+    maximum: 20
+    default: 3
+    description: "回傳最大結果數（預設 3，上限 20）"
   include_domains:
     type: array
     required: false
@@ -53,7 +58,9 @@ output_schema:
     type: string
     description: "格式化後的搜尋結果，含標題、URL、內文摘要"
 
-# (legacy) parameters — kept for backward compat with older loaders
+# (legacy) parameters — kept for backward compat with older loaders.
+# enum / default / minimum / maximum drive the block-config UI (dropdowns,
+# number inputs) so users can't accidentally fill "search_depth=1".
 parameters:
   type: object
   properties:
@@ -65,10 +72,15 @@ parameters:
       description: "指定要擷取內容的網址（覆寫 query，直接擷取該網頁）"
     search_depth:
       type: string
+      enum: ["basic", "advanced"]
+      default: "basic"
       description: "搜尋深度：'basic'（預設，快速）或 'advanced'（更深入）"
     max_results:
       type: integer
-      description: "回傳最大結果數（預設 3）"
+      minimum: 1
+      maximum: 20
+      default: 3
+      description: "回傳最大結果數（預設 3，上限 20）"
     include_domains:
       type: array
       description: "限制只搜尋這些網域（例：['udn.com','ltn.com.tw']）"
