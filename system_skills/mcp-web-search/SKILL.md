@@ -12,6 +12,67 @@ recommended_models:
   openai: gpt-4.1-nano
   gemini: gemini-2.0-flash
   claude: claude-haiku-4-5
+
+# ── v2 Schema 欄位（Phase 1 整合報告 §4.2）──
+env_requirements:
+  - TAVILY_API_KEY
+user_phrases:
+  - "幫我查一下"
+  - "搜尋關於"
+  - "找找看"
+  - "上網查"
+  - "新聞"
+  - "最新資訊"
+  - "這個網址寫什麼"
+  - "抓這個頁面"
+
+input_schema:
+  query:
+    type: string
+    required: false
+    description: "搜尋關鍵字。若提供 target_url 則此欄位可省略。"
+  target_url:
+    type: string
+    required: false
+    description: "指定要擷取內容的網址（覆寫 query，直接擷取該網頁）"
+  search_depth:
+    type: string
+    required: false
+    description: "搜尋深度：'basic'（預設，快速）或 'advanced'（更深入）"
+  max_results:
+    type: integer
+    required: false
+    description: "回傳最大結果數（預設 3）"
+  include_domains:
+    type: array
+    required: false
+    description: "限制只搜尋這些網域（例：['udn.com','ltn.com.tw']）"
+
+output_schema:
+  search_result:
+    type: string
+    description: "格式化後的搜尋結果，含標題、URL、內文摘要"
+
+# (legacy) parameters — kept for backward compat with older loaders
+parameters:
+  type: object
+  properties:
+    query:
+      type: string
+      description: "搜尋關鍵字。若提供 target_url 則此欄位可省略。"
+    target_url:
+      type: string
+      description: "指定要擷取內容的網址（覆寫 query，直接擷取該網頁）"
+    search_depth:
+      type: string
+      description: "搜尋深度：'basic'（預設，快速）或 'advanced'（更深入）"
+    max_results:
+      type: integer
+      description: "回傳最大結果數（預設 3）"
+    include_domains:
+      type: array
+      description: "限制只搜尋這些網域（例：['udn.com','ltn.com.tw']）"
+  required: []
 ---
 
 # MCP Web Search (Tavily 驅動)
