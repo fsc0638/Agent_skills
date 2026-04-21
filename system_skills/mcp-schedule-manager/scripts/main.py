@@ -255,7 +255,14 @@ def main():
     # Session info from environment (injected by adapter)
     session_id = os.getenv("SESSION_ID", "")
     chat_id = os.getenv("CHAT_ID", "")
-    user_original_request = os.getenv("USER_ORIGINAL_REQUEST", "")
+    # Read original request from multiple sources in priority order:
+    # 1. SKILL_PARAM_ORIGINAL_REQUEST — when passed as top-level input_map
+    #    param (workflow executor / LLM-gen path)
+    # 2. USER_ORIGINAL_REQUEST — set by adapter for LINE / Web chat path
+    user_original_request = (
+        os.getenv("SKILL_PARAM_ORIGINAL_REQUEST", "")
+        or os.getenv("USER_ORIGINAL_REQUEST", "")
+    )
 
     # Resolve paths
     project_root = _resolve_project_root()
