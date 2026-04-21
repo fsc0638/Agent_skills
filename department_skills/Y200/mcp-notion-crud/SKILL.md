@@ -1,7 +1,7 @@
 ---
 name: mcp-notion-crud
 skillk_id: SkillK_dXanFjI1wZZEgnkeUDu1
-display_name: "Notion ToDo 資料庫完整操作工具"
+display_name: "Notion ToDo"
 category: Department
 provider: mcp
 version: "1.0.0"
