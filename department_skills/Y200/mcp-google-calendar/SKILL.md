@@ -13,6 +13,35 @@ recommended_models:
   openai: gpt-4.1-nano
   gemini: gemini-2.0-flash
   claude: claude-haiku-4-5
+
+# Workflow 設計器可讀的參數 schema
+parameters:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [today, list, create, update, delete, free_busy]
+      default: today
+      description: "操作類型：today=今日行程；list=指定範圍；create/update/delete=事件操作；free_busy=查空閒"
+    start:
+      type: string
+      description: "list / create / free_busy 的起始時間 (ISO 格式，如 2026-04-25T00:00:00+08:00)"
+    end:
+      type: string
+      description: "list / create / free_busy 的結束時間 (ISO 格式)"
+    title:
+      type: string
+      description: "create 事件的標題"
+    description:
+      type: string
+      description: "create / update 事件的描述"
+    event_id:
+      type: string
+      description: "update / delete 要操作的 event_id"
+    attendees:
+      type: string
+      description: "與會者 email 以逗號分隔"
+  required: [action]
 ---
 
 # MCP Google Calendar（Google 日曆管理工具）

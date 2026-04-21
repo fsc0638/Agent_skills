@@ -65,6 +65,63 @@ recommended_models:
   openai: gpt-4.1-nano
   gemini: gemini-2.0-flash
   claude: claude-haiku-4-5
+
+# Workflow 設計器可讀的參數 schema — 讓 block config 面板能渲染出
+# 具體欄位（enum 會變下拉、description 顯示在 label 下方）。
+parameters:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [list, summary, find_duplicates, create, create_batch, update, update_batch, delete, delete_batch]
+      default: list
+      description: "操作類型：list / summary 為唯讀；create / update / delete 會修改 Notion 資料"
+    keyword:
+      type: string
+      description: "篩選關鍵字（標題包含此字串）— 用於 list / update / delete 定位"
+    filter_status:
+      type: string
+      description: "狀態篩選（如「未完成」或「not:已完成」）"
+    filter_assignee:
+      type: string
+      description: "指派對象篩選"
+    filter_project:
+      type: string
+      description: "專案篩選"
+    filter_date:
+      type: string
+      description: "建立日期篩選（支援 before:2026-04-15 / after:2026-04-15）"
+    filter_due_date:
+      type: string
+      description: "到期日篩選（支援 before: / after:）"
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 100
+      default: 20
+      description: "list 查詢每頁筆數（預設 20，最多 100）"
+    offset:
+      type: integer
+      minimum: 0
+      default: 0
+      description: "list 分頁起始位置"
+    todo_title:
+      type: string
+      description: "create 新增單筆時的標題（action=create 時必填）"
+    page_id:
+      type: string
+      description: "update / delete 的目標頁面 UUID（若用 keyword 定位則可省略）"
+    set_status:
+      type: string
+      description: "update / update_batch 的目標狀態值"
+    set_assignee:
+      type: string
+      description: "update / update_batch 的目標指派對象"
+    confirm:
+      type: boolean
+      default: false
+      description: "delete_batch 兩段式確認旗標（true 才真的刪）"
+  required: [action]
 ---
 
 # Notion ToDo CRUD 工具 (mcp-notion-crud)
