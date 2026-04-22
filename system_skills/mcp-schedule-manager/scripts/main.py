@@ -458,7 +458,23 @@ def main():
             _req_count = _parse_cn_or_digit(user_original_request, r'[則條篇筆個]')
 
             # Detect one-time intent: "X分鐘後" / "X小時後" WITHOUT recurring keywords
-            _recurring_kw = _re.search(r'每[天日週周]|每\s*[\d一二三四五六七八九十]+\s*分鐘|每隔|定時|工作日|weekday', user_original_request)
+            # Recurring keywords — recognise common Chinese phrasings:
+            #   每天/每日/每週/每周/每月/每年
+            #   每個工作天/每個工作日/每工作日 (user's "每個工作天" case)
+            #   每週五/每個週一 etc.
+            #   每 N 分鐘/小時
+            #   每隔、定時、weekday、daily、weekly
+            _recurring_kw = _re.search(
+                r'每[天日週周月年]'
+                r'|每個?[天日週周月]'
+                r'|每個?工作[天日]'
+                r'|每週?[一二三四五六日天]'
+                r'|每\s*[\d一二三四五六七八九十]+\s*(分鐘|小時|時|日|天)'
+                r'|每隔|定時|周期性|固定時間'
+                r'|工作日|週[一二三四五]至週[一二三四五六日天]'
+                r'|weekday|daily|weekly|monthly',
+                user_original_request,
+            )
 
             if _req_min and not _recurring_kw:
                 # User said "X分鐘後" (one-time) — cron MUST be "once +Xm"
@@ -492,20 +508,28 @@ def main():
                         print(f"[GUARD] Corrected cron: {_old} → {cron} (user said {_req_hr}小時)", file=sys.stderr)
 
             # Guard: Fixed-time one-shot — "在1700時" / "17點" / "下午5點" without recurring keywords
-            # If user said a specific clock time but no "每天/每日/每週", treat as one-time
+            # If user said a specific clock time but no "每天/每日/每週", treat as one-time.
+            # IMPORTANT: require an explicit time unit (時/點) or colon separator, otherwise
+            # bare numbers like "200字元", "十則" get mis-parsed as clock times.
             if not _recurring_kw and not _req_min and not _req_hr and not cron.startswith("once"):
-                # Detect fixed-time patterns: "1700", "17:00", "17點", "下午5點"
+                # Detect fixed-time patterns: "1700時", "17:00", "17點", "下午5點"
                 _fixed_time = None
-                _ft = _re.search(r'(?:在|於)?\s*(\d{3,4})\s*[時点點]?', user_original_request)
+                # Pattern 1: 3-4 digits REQUIRED to be followed by 時/點 (e.g. "1700時"),
+                # previously [時点點]? was optional causing "200字元" → 02:00
+                _ft = _re.search(r'(?:在|於)\s*(\d{3,4})\s*[時点點]', user_original_request)
                 if _ft:
                     _t = _ft.group(1).zfill(4)
                     _fixed_time = (int(_t[:2]), int(_t[2:]))
+                # Pattern 2: colon separator (17:00 / 17：00) — these are unambiguously times
                 if not _fixed_time:
                     _ft = _re.search(r'(\d{1,2})\s*[:：]\s*(\d{2})', user_original_request)
                     if _ft:
                         _fixed_time = (int(_ft.group(1)), int(_ft.group(2)))
+                # Pattern 3: Chinese clock marker 點 (e.g. "17點", "下午5點半"). Only
+                # match when the digit IS followed by 點/点, not when it precedes
+                # other quantifier units like 則/個/筆/條/字.
                 if not _fixed_time:
-                    _ft = _re.search(r'(\d{1,2})\s*[點点]\s*(\d{0,2})', user_original_request)
+                    _ft = _re.search(r'(\d{1,2})\s*[點点](\d{0,2})', user_original_request)
                     if _ft:
                         _h = int(_ft.group(1))
                         _m = int(_ft.group(2)) if _ft.group(2) else 0
@@ -513,6 +537,22 @@ def main():
                         if _re.search(r'下午|晚上|pm', user_original_request, _re.IGNORECASE) and _h < 12:
                             _h += 12
                         _fixed_time = (_h, _m)
+                # Pattern 4: Chinese numeral hour (e.g. 「上午八點」 = 08:00, 「下午五點」 = 17:00)
+                # This was missing — so "上午八點" got parsed via the looser digit pattern
+                # into some random match. Explicit Chinese numeral → hour mapping.
+                if not _fixed_time:
+                    _cn_digits = {"零":0,"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"七":7,"八":8,"九":9,"十":10,"十一":11,"十二":12}
+                    _cn_re = _re.search(r'(上午|早上|中午|下午|晚上)?\s*([一二三四五六七八九十]+)\s*[點点]', user_original_request)
+                    if _cn_re:
+                        _ampm = _cn_re.group(1) or ""
+                        _hanzi = _cn_re.group(2)
+                        if _hanzi in _cn_digits:
+                            _h = _cn_digits[_hanzi]
+                            if _ampm in ("下午", "晚上") and _h < 12:
+                                _h += 12
+                            elif _ampm == "中午" and _h < 12:
+                                _h = 12
+                            _fixed_time = (_h, 0)
 
                 if _fixed_time:
                     _target_h, _target_m = _fixed_time
