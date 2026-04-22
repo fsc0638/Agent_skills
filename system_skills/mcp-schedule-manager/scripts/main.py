@@ -246,7 +246,16 @@ def _auto_correct_task_type(task_type: str, task_config: dict, original_request:
 
 def main():
     action = os.getenv("SKILL_PARAM_ACTION", "list")
-    task_type = os.getenv("SKILL_PARAM_TASK_TYPE", "custom")
+    # Accept both SKILL_PARAM_TASK_TYPE (legacy LLM-tool naming) and
+    # SKILL_PARAM_TYPE (workflow editor / v2 schema naming). Workflow
+    # designer's params tab uses 'type' as the key (matches JSON schema),
+    # while older LINE-chat tool calls used 'task_type'. Both are valid
+    # inputs — first non-empty wins.
+    task_type = (
+        os.getenv("SKILL_PARAM_TASK_TYPE", "")
+        or os.getenv("SKILL_PARAM_TYPE", "")
+        or "custom"
+    )
     name = os.getenv("SKILL_PARAM_NAME", "")
     cron = os.getenv("SKILL_PARAM_CRON", "08:00")
     config_str = os.getenv("SKILL_PARAM_CONFIG", "{}")
