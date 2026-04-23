@@ -1,0 +1,103 @@
+"""Skill main.py boilerplate with mandatory _usage reporting.
+
+Copy this file to `Agent_skills/system_skills/mcp-YOUR-SKILL/scripts/main.py`
+(or department_skills / user_skills equivalent) and fill in the TODO blocks.
+
+Contract:
+- Reads a single JSON object from stdin (args)
+- Prints exactly one JSON object to stdout (result)
+- Top-level "_usage" field is MANDATORY when the skill calls an LLM;
+  optional (but recommended = 0) when it doesn't. WorkflowExecutor reads
+  this field to populate the admin Dashboard's token analytics.
+"""
+
+import json
+import os
+import sys
+
+
+def _llm_call_openai(prompt: str, model: str = None) -> dict:
+    """Example OpenAI call that properly captures + returns usage.
+
+    Returns { "content": str, "usage": { input_tokens, output_tokens,
+    total_tokens } }. Aggregate these across every LLM call your skill
+    makes into the top-level _usage you print to stdout.
+    """
+    from openai import OpenAI
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    resp = client.chat.completions.create(
+        model=model or os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+    )
+    content = resp.choices[0].message.content or ""
+    u = resp.usage  # provider guarantees this on non-streaming calls
+    return {
+        "content": content,
+        "usage": {
+            "input_tokens": u.prompt_tokens,
+            "output_tokens": u.completion_tokens,
+            "total_tokens": u.total_tokens,
+        },
+    }
+
+
+def main():
+    # 1. Parse args from stdin
+    try:
+        args = json.loads(sys.stdin.read() or "{}")
+    except Exception:
+        args = {}
+
+    # 2. TODO: Do your skill's work.
+    #    If you call LLM(s), accumulate token usage as you go.
+    total_in = 0
+    total_out = 0
+    total_all = 0
+    model_used = ""
+    output_text = ""
+
+    try:
+        # Example: single LLM call
+        r = _llm_call_openai(args.get("prompt", ""))
+        output_text = r["content"]
+        total_in  += r["usage"]["input_tokens"]
+        total_out += r["usage"]["output_tokens"]
+        total_all += r["usage"]["total_tokens"]
+        model_used = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+        # For skills that make MULTIPLE LLM calls in a loop, repeat the
+        # accumulation on each iteration:
+        #   for chunk in chunks:
+        #       r = _llm_call_openai(chunk)
+        #       total_in  += r["usage"]["input_tokens"]
+        #       total_out += r["usage"]["output_tokens"]
+        #       total_all += r["usage"]["total_tokens"]
+
+        result = {
+            "status": "success",
+            "output": output_text,
+        }
+    except Exception as e:
+        result = {
+            "status": "error",
+            "message": str(e),
+        }
+
+    # 3. MANDATORY for LLM-using skills: attach _usage before printing.
+    #    Skills that don't call any LLM should still emit a zeroed _usage
+    #    so the admin dashboard pipeline can distinguish "no LLM used"
+    #    from "forgot to report".
+    result["_usage"] = {
+        "model": model_used,
+        "input_tokens": total_in,
+        "output_tokens": total_out,
+        "total_tokens": total_all,
+        "skill_total_tokens": total_all,   # sum across all calls above
+    }
+
+    print(json.dumps(result, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()
