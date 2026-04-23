@@ -98,6 +98,10 @@ def main():
 
         local_url = f"{base_url}/images/{filename}"
 
+        # _usage contract — see Agent_skills/README.md. gpt-image-1 bills by
+        # image+size+quality, not tokens, so prompt/completion counts are
+        # always 0. Attach model + the image metadata so cost attribution
+        # downstream can compute price from size/quality if needed.
         print(json.dumps({
             "status": "success",
             "image_url": local_url,
@@ -106,23 +110,46 @@ def main():
             "prompt_used": prompt,
             "size": size,
             "quality": quality,
-            "message": f"圖片已生成：{filename}"
+            "message": f"圖片已生成：{filename}",
+            "_usage": {
+                "model": "gpt-image-1",
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+                "skill_total_tokens": 0,
+                "image_count": 1,
+                "image_size": size,
+                "image_quality": quality,
+            },
         }, ensure_ascii=False))
 
     except Exception as e:
         error_msg = str(e)
+        # Even on failure, keep the _usage shape consistent so the admin
+        # pipeline's summary loop doesn't need special-case handling for
+        # errored image-gen rows.
+        _err_usage = {
+            "model": "gpt-image-1",
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "skill_total_tokens": 0,
+            "image_count": 0,
+        }
         # Handle content policy violations gracefully
         if "content_policy" in error_msg.lower() or "safety" in error_msg.lower():
             print(json.dumps({
                 "status": "error",
                 "message": "圖片內容不符合安全政策，請修改描述後重試。",
-                "detail": error_msg
+                "detail": error_msg,
+                "_usage": _err_usage,
             }, ensure_ascii=False))
         else:
             print(json.dumps({
                 "status": "error",
                 "message": f"圖片生成失敗：{error_msg}",
-                "detail": traceback.format_exc()
+                "detail": traceback.format_exc(),
+                "_usage": _err_usage,
             }, ensure_ascii=False))
 
 

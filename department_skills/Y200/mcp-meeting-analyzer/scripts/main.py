@@ -29,6 +29,13 @@ LLM_MODEL = os.getenv("MEETING_LLM_MODEL", "gpt-4.1-mini")
 
 # ── Helper: LLM Call ─────────────────────────────────────────────────────────
 
+# Running totals for _usage reporting. Aggregated across all LLM calls this
+# invocation makes (Phase 1 Sanitizer + Phase 2 Org Parser), printed to stdout
+# at the end so WorkflowExecutor can fold the real spend into the admin
+# Dashboard analytics pipeline.
+_USAGE_TOTAL = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+
+
 def call_llm(prompt: str, max_tokens: int = 4096) -> str:
     import openai
 
@@ -43,6 +50,16 @@ def call_llm(prompt: str, max_tokens: int = 4096) -> str:
         temperature=0.3,
         max_tokens=max_tokens,
     )
+    # Accumulate token usage across every call made this invocation.
+    # Contract: top-level _usage in stdout JSON (see Agent_skills/README.md).
+    try:
+        u = response.usage
+        if u is not None:
+            _USAGE_TOTAL["input_tokens"]  += getattr(u, "prompt_tokens", 0) or 0
+            _USAGE_TOTAL["output_tokens"] += getattr(u, "completion_tokens", 0) or 0
+            _USAGE_TOTAL["total_tokens"]  += getattr(u, "total_tokens", 0) or 0
+    except Exception:
+        pass
     return response.choices[0].message.content.strip()
 
 
@@ -206,14 +223,31 @@ def main():
                 "language": language,
                 "department_code": department_code or org_data.get("責任部門代碼", ""),
             },
+            "_usage": {
+                "model": LLM_MODEL,
+                "input_tokens":  _USAGE_TOTAL["input_tokens"],
+                "output_tokens": _USAGE_TOTAL["output_tokens"],
+                "total_tokens":  _USAGE_TOTAL["total_tokens"],
+                "skill_total_tokens": _USAGE_TOTAL["total_tokens"],
+            },
         }
 
         print(json.dumps(output, ensure_ascii=False))
 
     except Exception:
+        # Even on failure, surface any partial usage already consumed so
+        # the admin dashboard doesn't under-report cost on pipelines that
+        # crash mid-way through Phase 2.
         print(json.dumps({
             "status": "error",
-            "message": f"Pipeline 執行失敗：{traceback.format_exc()}"
+            "message": f"Pipeline 執行失敗：{traceback.format_exc()}",
+            "_usage": {
+                "model": LLM_MODEL,
+                "input_tokens":  _USAGE_TOTAL["input_tokens"],
+                "output_tokens": _USAGE_TOTAL["output_tokens"],
+                "total_tokens":  _USAGE_TOTAL["total_tokens"],
+                "skill_total_tokens": _USAGE_TOTAL["total_tokens"],
+            },
         }, ensure_ascii=False))
 
 
