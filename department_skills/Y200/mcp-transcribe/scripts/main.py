@@ -37,10 +37,15 @@ MIME_MAP = {
 }
 
 PROMPT = (
-    "Please transcribe this audio accurately. "
+    "Please transcribe this audio file accurately and completely. "
     "If there are multiple speakers, distinguish them where possible. "
-    "Return only the transcript text, preserving the original language."
+    "Return ONLY the transcript text, preserving the original language. "
+    "Do NOT add any commentary, analysis, summary, or meta-text. "
+    "Do NOT say things like 'here is the transcript' or 'the audio contains'. "
+    "If you cannot hear or understand a segment, mark it as [inaudible]."
 )
+
+MAX_OUTPUT_TOKENS = 65536  # 防止無限輸出，足夠覆蓋 2 小時會議逐字稿
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -60,6 +65,7 @@ def transcribe_inline(client, file_path: Path, mime_type: str) -> str:
                 types.Part(text=PROMPT),
             ])
         ],
+        config=types.GenerateContentConfig(max_output_tokens=MAX_OUTPUT_TOKENS),
     )
     return response.text
 
@@ -83,6 +89,7 @@ def transcribe_via_file_api(client, file_path: Path, mime_type: str) -> str:
                     types.Part(text=PROMPT),
                 ])
             ],
+            config=types.GenerateContentConfig(max_output_tokens=MAX_OUTPUT_TOKENS),
         )
         return response.text
     finally:
