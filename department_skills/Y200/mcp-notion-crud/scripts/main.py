@@ -628,6 +628,14 @@ def load_prompt(filename: str) -> str:
 
 # ── LLM Call (for Schema Mapping) ───────────────────────────────────────────
 
+# Running token totals. call_llm() adds to these every time it runs; a print
+# hook installed at main() start injects _usage into whichever result dict
+# finally gets printed (this file has 9 different print sites across the
+# action dispatch — patching them all would be noisy). See
+# Agent_skills/README.md for the _usage contract.
+_USAGE_TOTAL = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+
+
 def call_llm(prompt: str, max_tokens: int = 4096) -> str:
     import openai
     api_key = os.getenv("OPENAI_API_KEY")
@@ -640,7 +648,47 @@ def call_llm(prompt: str, max_tokens: int = 4096) -> str:
         temperature=0.3,
         max_tokens=max_tokens,
     )
+    # Accumulate usage across every LLM call in this invocation.
+    try:
+        u = response.usage
+        if u is not None:
+            _USAGE_TOTAL["input_tokens"]  += getattr(u, "prompt_tokens", 0) or 0
+            _USAGE_TOTAL["output_tokens"] += getattr(u, "completion_tokens", 0) or 0
+            _USAGE_TOTAL["total_tokens"]  += getattr(u, "total_tokens", 0) or 0
+    except Exception:
+        pass
     return response.choices[0].message.content.strip()
+
+
+def _install_usage_hook():
+    """Monkey-patch builtins.print so any top-level JSON emission inherits
+    a _usage field from the running totals. Covers all 9 print(json.dumps(...))
+    sites in main() without rewriting each.
+    """
+    import builtins
+    _orig_print = builtins.print
+
+    def _hook(*args, **kwargs):
+        if args and isinstance(args[0], str):
+            s = args[0].lstrip()
+            if s.startswith("{"):
+                try:
+                    d = json.loads(args[0])
+                    if isinstance(d, dict) and "_usage" not in d:
+                        d["_usage"] = {
+                            "model": LLM_MODEL,
+                            "input_tokens":  _USAGE_TOTAL["input_tokens"],
+                            "output_tokens": _USAGE_TOTAL["output_tokens"],
+                            "total_tokens":  _USAGE_TOTAL["total_tokens"],
+                            "skill_total_tokens": _USAGE_TOTAL["total_tokens"],
+                        }
+                        _orig_print(json.dumps(d, ensure_ascii=False), **kwargs)
+                        return
+                except Exception:
+                    pass
+        _orig_print(*args, **kwargs)
+
+    builtins.print = _hook
 
 
 def extract_json(text: str):
@@ -1656,6 +1704,7 @@ def action_update_batch(token: str, db_id: str,
 # ── Main Entry Point ─────────────────────────────────────────────────────────
 
 def main():
+    _install_usage_hook()  # every subsequent print(json.dumps(...)) gets _usage
     action = os.getenv("SKILL_PARAM_ACTION", "").strip().lower()
 
     # Credentials
