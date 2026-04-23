@@ -178,6 +178,16 @@ def main():
             "llm_call_count": _USAGE_TOTAL["call_count"],
         }
 
+    # Snapshot the downloads directory before exec so we can diff for new
+    # files afterward. Any file the user code creates here becomes a
+    # download_url in the result, which WorkflowExecutor / chat UI turn
+    # into a clickable link. Catches cases where the print line doesn't
+    # follow the "OK: filename" convention.
+    try:
+        _before_files = {p.name: p.stat().st_mtime for p in downloads_dir.iterdir() if p.is_file()}
+    except Exception:
+        _before_files = {}
+
     try:
         # Capture stdout
         import io
@@ -189,12 +199,36 @@ def main():
 
         output = f.getvalue()
 
-        print(json.dumps({
+        # Detect newly-created / modified files in downloads/
+        new_files = []
+        try:
+            for p in downloads_dir.iterdir():
+                if not p.is_file():
+                    continue
+                prev_mtime = _before_files.get(p.name)
+                if prev_mtime is None or p.stat().st_mtime > prev_mtime:
+                    new_files.append(p.name)
+        except Exception:
+            pass
+
+        base_url = os.environ.get("BASE_URL", "http://localhost:8500").rstrip("/")
+        download_urls = [f"{base_url}/downloads/{name}" for name in new_files]
+
+        result = {
             "status": "success",
             "output": output.strip(),
             "message": "Code executed successfully",
             "_usage": _build_usage_field(),
-        }, ensure_ascii=False))
+        }
+        if new_files:
+            # Primary (most recent) file for UI convenience; full list also
+            # exposed so downstream consumers can pick.
+            result["download_filename"] = new_files[-1]
+            result["download_url"] = download_urls[-1]
+            result["download_files"] = [
+                {"filename": n, "url": u} for n, u in zip(new_files, download_urls)
+            ]
+        print(json.dumps(result, ensure_ascii=False))
 
     except Exception:
         error_msg = traceback.format_exc()
