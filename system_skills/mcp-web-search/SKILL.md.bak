@@ -7,7 +7,7 @@ version: "1.0.0"
 description: >
   全網搜尋與精準網頁內容擷取工具 (Tavily 驅動)。當需要獲取即時網路資訊或分析特定網址內容時使用。
 runtime_requirements: []
-risk_level: high
+risk_level: low
 recommended_models:
   openai: gpt-4.1-nano
   gemini: gemini-2.0-flash
